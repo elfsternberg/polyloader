@@ -1,0 +1,8 @@
+*~
+*.swp
+db.sqlite3
+bower_components
+*.pyc
+\#*#
+.#*
+catalogia/settings.hy
