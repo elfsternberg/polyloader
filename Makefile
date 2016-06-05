@@ -46,7 +46,7 @@ clean-test:
 	rm -fr htmlcov/
 
 lint:
-	flake8 py-polymorphic-loader tests
+	flake8 polyloader tests
 
 test:
 	py.test
@@ -56,15 +56,15 @@ test-all:
 	tox
 
 coverage:
-	coverage run --source py-polymorphic-loader py.test
+	coverage run --source polyloader py.test
 	coverage report -m
 	coverage html
 	$(BROWSER) htmlcov/index.html
 
 docs:
-	rm -f docs/py-polymorphic-loader.rst
+	rm -f docs/polyloader.rst
 	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ py-polymorphic-loader
+	sphinx-apidoc -o docs/ polyloader
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
 	$(BROWSER) docs/_build/html/index.html
