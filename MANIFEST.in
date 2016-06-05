@@ -1,7 +1,11 @@
-include *.py
+include AUTHORS.md
+include CONTRIBUTING.md
+include HISTORY.md
 include LICENSE
-exclude run_tests.py
-exclude requirements.txt
-exclude README.md
-recursive-include *.py
-prune tests
+include README.md
+
+recursive-include tests *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+
+recursive-include docs *.md conf.py Makefile make.bat *.jpg *.png *.gif
