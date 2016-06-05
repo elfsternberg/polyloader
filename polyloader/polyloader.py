@@ -174,5 +174,5 @@ def install(compiler, suffixes):
                                ExtendedSourceFileLoader.get_extended_suffixes_inclusive())
     sys.path_hooks[fpos] = ExtendedFileFinder.path_hook(*supported_loaders)
     iter_importer_modules.register(ExtendedFileFinder, ExtendedFileFinder.iter_modules)
-    if sys.path[0] !== "":
+    if sys.path[0] != "":
         sys.path.insert(0, "")

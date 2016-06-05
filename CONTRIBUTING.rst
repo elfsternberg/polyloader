@@ -13,7 +13,7 @@ Report Bugs
 ~~~~~~~~~~~
 
 Report bugs at
-https://github.com/elfsternberg/py-polymorphic-loader/issues.
+https://github.com/elfsternberg/polyloader/issues.
 
 If you are reporting a bug, please include:
 
@@ -37,15 +37,15 @@ Look through the GitHub issues for features. Anything tagged with
 Write Documentation
 ~~~~~~~~~~~~~~~~~~~
 
-py-polymorphic-loader could always use more documentation, whether as
-part of the official py-polymorphic-loader docs, in docstrings, or even
+polyloader could always use more documentation, whether as
+part of the official polyloader docs, in docstrings, or even
 on the web in blog posts, articles, and such.
 
 Submit Feedback
 ~~~~~~~~~~~~~~~
 
 The best way to send feedback is to file an issue at
-https://github.com/elfsternberg/py-polymorphic-loader/issues.
+https://github.com/elfsternberg/polyloader/issues.
 
 If you are proposing a feature:
 
@@ -57,15 +57,15 @@ If you are proposing a feature:
 Get Started!
 ------------
 
-Ready to contribute? Here's how to set up py-polymorphic-loader for
+Ready to contribute? Here's how to set up polyloader for
 local development.
 
-1. Fork the py-polymorphic-loader repo on GitHub.
+1. Fork the polyloader repo on GitHub.
 2. Clone your fork locally:
 
    ::
 
-       $ git clone git@github.com:your_name_here/py-polymorphic-loader.git
+       $ git clone git@github.com:your_name_here/polyloader.git
 
 3. Install your local copy into a virtualenv. Assuming you have
    virtualenvwrapper installed, this is how you set up your fork for
@@ -73,8 +73,8 @@ local development.
 
    ::
 
-       $ mkvirtualenv py-polymorphic-loader
-       $ cd py-polymorphic-loader/
+       $ mkvirtualenv polyloader
+       $ cd polyloader/
        $ python setup.py develop
 
 4. Create a branch for local development:
@@ -90,7 +90,7 @@ local development.
 
    ::
 
-       $ flake8 py-polymorphic-loader tests
+       $ flake8 polyloader tests
        $ python setup.py test or py.test
        $ tox
 
@@ -117,7 +117,7 @@ Before you submit a pull request, check that it meets these guidelines:
    the feature to the list in README.rst.
 3. The pull request should work for Python 2.6, 2.7, 3.3, 3.4 and 3.5,
    and for PyPy. Check
-   https://travis-ci.org/elfsternberg/py-polymorphic-loader/pull_requests
+   https://travis-ci.org/elfsternberg/polyloader/pull_requests
    and make sure that the tests pass for all supported Python versions.
 
 Tips
@@ -125,4 +125,4 @@ Tips
 
 To run a subset of tests:
 
-$ py.test tests.test\_py-polymorphic-loader
+$ py.test tests.test\_polyloader

@@ -31,7 +31,7 @@ setup(
     author_email='elf.sternberg@gmail.com',
     url='https://github.com/elfsternberg/polyloader',
     packages=[
-        'py-polymorphic-loader',
+        'polyloader',
     ],
     package_dir={'polyloader': 'polyloader'},
     include_package_data=True,

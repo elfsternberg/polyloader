@@ -2,58 +2,51 @@
 # -*- coding: utf-8 -*-
 
 """
-test_py-polymorphic-loader
+test_polyloader
 ----------------------------------
 
-Tests for `py-polymorphic-loader` module.
+Tests for `polyloader` module.
 """
 
 import pytest
 
+from polyloader import polyloader
 
-from py_polymorphic_loader import polymorph
-
-# Note that these compilers don't actually load anything out of the
+# Note that these compilers don't actually load much out of the
 # source files.  That's not the point.  The point is to show that the
 # correct compiler has been found for a given extension.
 
-def compiler2(filename):
-    return compile("result='Success for %s'" % (filename), filename, "exec")
-
-def compiler3(filename):
-    return compile("result='Success for %s'" % (filename), filename, "exec")
+def compiler(pt):
+    def _compiler(source_path, modulename):
+        with open(source_path, "r") as file:
+            return compile("result='Success for %s: %s'" % (pt, file.readline().rstrip()), modulename, "exec")
+    return _compiler
 
 class Test_Polymorph_1(object):
     def test_import1(self):
-        import polytestmix
-        polytestmix.install(compiler2, ['.2'])
-        polytestmix.install(compiler3, ['.3'])
-        assert(polytestmix.test2.result = "Success for test2")
-        assert(polytestmix.test3.result = "Success for test3")
-
-class Test_Polymorph_2(object):
-    def test_import2(self):
-        import polytestmix
-        polytestmix.install(compiler2, ['.2'])
-        polytestmix.install(compiler3, ['.3'])
-        assert(polytestmix.test2.result = "Success for test2")
-
-class Test_Polymorph_2(object):
-    def test_import2(self):
-        import polytestmix.test3
-        polytestmix.install(compiler2, ['.2'])
-        polytestmix.install(compiler3, ['.3'])
-        assert(polytestmix.test3.result = "Success for test3")
+        polyloader.install(compiler("2"), ['.2'])
+        polyloader.install(compiler("3"), ['.3'])
+        from .polytestmix import test2
+        from .polytestmix import test3
+        assert(test2.result == "Success for 2: Test Two")
+        assert(test3.result == "Success for 3: Test Three")
 
 class Test_Polymorph_Iterator(object):
-    ''' The Django Compatibility test. '''
+    ''' The Django Compatibility test: Can we load arbitrary modules from a package? '''
     def test_iterator(self):
-        import polytestmix.test3
-        polytestmix.install(compiler2, ['.2'])
-        polytestmix.install(compiler3, ['.3'])
-        target_dir = os.path.join('.', 'polytestmix')
-        files = set([name for _, name, is_pkg in pkgutil.iter_modules([targetdir])
+        import os
+        import pkgutil
+        import inspect
+        polyloader.install(compiler("2"), ['.2'])
+        polyloader.install(compiler("3"), ['.3'])
+        from .polytestmix import test2
+        from .polytestmix import test3
+        target_dir = os.path.join(
+            os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))),
+            'polytestmix')
+        modules = set([name for _, name, is_pkg in pkgutil.iter_modules([target_dir])
             if not is_pkg and not name.startswith('_')])
-        assert(files == set(['test2.2', 'test3.3', 'test1.py']))
+        assert(modules == set(['test1', 'test2', 'test3']))
                     
         
+
