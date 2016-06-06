@@ -30,15 +30,22 @@ import sys
 from importlib import machinery
 from importlib.machinery import SOURCE_SUFFIXES as PY_SOURCE_SUFFIXES
 from pkgutil import iter_importer_modules
+import sys
 
-try:
-    from importlib._bootstrap import _get_supported_file_loaders
-except:
-    from importlib._bootstrap_external import _get_supported_file_loaders
 
 __author__ = 'Elf M. Sternberg'
 __version__ = '2016.05.29'
 __contact__ = 'elf.sternberg@gmail.com'
+
+
+if sys.version_info[0:2] in [(3,3), (3,4)]:
+    from importlib._bootstrap import _get_supported_file_loaders
+    sourcefile_recognizer = 'importlib.SourceFileLoader'
+
+if sys.version_info[0:2] in [(3,5)]:
+    from importlib._bootstrap_external import _get_supported_file_loaders
+    sourcefile_recognizer = 'importlib_external.SourceFileLoader'
+
 
 def _call_with_frames_removed(f, *args, **kwds):
     # Hack.  This function name and signature is hard-coded into
@@ -52,8 +59,7 @@ class ExtendedSourceFileLoader(machinery.SourceFileLoader):
        if it's a Python file, which will generate pyc files as needed,
        or works its way into the Extended version.  This method does
        not yet address the generation of .pyc/.pyo files from source
-       files.
-
+       files for languages other than Python.
     """
 
     _source_handlers = []
@@ -70,7 +76,7 @@ class ExtendedSourceFileLoader(machinery.SourceFileLoader):
         return PY_SOURCE_SUFFIXES + cls.get_extended_suffixes()
 
     # TODO: Address the generation of .pyc/.pyo files from source files.
-    # See importlib/_bootstrap.py for details is SourceFileLoader of
+    # See importlib/_bootstrap.py for details in SourceFileLoader of
     # how that's done.
     def get_code(self, fullname):
         source_path = self.get_filename(fullname)
@@ -79,10 +85,11 @@ class ExtendedSourceFileLoader(machinery.SourceFileLoader):
 
         for compiler, suffixes in self._source_handlers:
             if source_path.endswith(suffixes):
-                return compiler(source_path, fullname)
+                return _call_with_frames_removed(compiler, source_path, fullname)
         else:
             raise ImportError("Could not find compiler for %s (%s)" % (fullname, source_path))
 
+        
 # Provide a working namespace for our new FileFinder.
 class ExtendedFileFinder(machinery.FileFinder):
 
@@ -154,25 +161,77 @@ def install(compiler, suffixes):
         python executable modules automatically.  
     """
 
-    filefinder = [(f, i) for i, f in enumerate(sys.path_hooks)
-                  if repr(f).find('path_hook_for_FileFinder') != -1]
-    if not filefinder:
-        return
-    filefinder, fpos = filefinder[0]
+    if sys.version[0] >= 3:
+        filefinder = [(f, i) for i, f in enumerate(sys.path_hooks)
+                      if repr(f).find('path_hook_for_FileFinder') != -1]
+        if not filefinder:
+            return
+        filefinder, fpos = filefinder[0]
+    
+        ExtendedSourceFileLoader._source_handlers = (ExtendedSourceFileLoader._source_handlers +
+                                                     [(compiler, tuple(suffixes))])
+    
+        supported_loaders = _get_supported_file_loaders()
+        print([repr(i) for i in supported_loaders])
+        sourceloader = [(l, i) for i, l in enumerate(supported_loaders)
+                        if repr(l[0]).find(sourcefile_recognizer) != -1]
+        if not sourceloader:
+            return
+    
+        sourceloader, spos = sourceloader[0]
+        supported_loaders[spos] = (ExtendedSourceFileLoader,
+                                   ExtendedSourceFileLoader.get_extended_suffixes_inclusive())
+        sys.path_hooks[fpos] = ExtendedFileFinder.path_hook(*supported_loaders)
+        iter_importer_modules.register(ExtendedFileFinder, ExtendedFileFinder.iter_modules)
+        if sys.path[0] != "":
+            sys.path.insert(0, "")
 
-    ExtendedSourceFileLoader._source_handlers = (ExtendedSourceFileLoader._source_handlers +
-                                                 [(compiler, tuple(suffixes))])
+    if sys.version[0:2] == (2, 7):
+        def loader(path):
+            class Loader(object):
+                def __init__(self, path):
+                    self.path = path
+                    
+                def is_package(self, fullname):
+                    dirpath = "/".join(fullname.split("."))
+                    for pth in sys.path:
+                        pth = os.path.abspath(pth)
+                        composed_path = "%s/%s/__init__.%s" % (pth, dirpath, suffix)
+                        if os.path.exists(composed_path):
+                            return True
+                    return False
 
-    supported_loaders = _get_supported_file_loaders()
-    sourceloader = [(l, i) for i, l in enumerate(supported_loaders)
-                    if repr(l[0]).find('importlib.SourceFileLoader') != -1]
-    if not sourceloader:
-        return
+                def load_module(self, name):
+                    if name in sys.modules:
+                        return sys.modules[name]
 
-    sourceloader, spos = sourceloader[0]
-    supported_loaders[spos] = (ExtendedSourceFileLoader,
-                               ExtendedSourceFileLoader.get_extended_suffixes_inclusive())
-    sys.path_hooks[fpos] = ExtendedFileFinder.path_hook(*supported_loaders)
-    iter_importer_modules.register(ExtendedFileFinder, ExtendedFileFinder.iter_modules)
-    if sys.path[0] != "":
-        sys.path.insert(0, "")
+                    module = compiler(fullname, path)
+                    module.__file__ = path
+                    sys.modules[name] = module
+                    if '.' in name:
+                        parent_name, child_name = name.rsplit('.', 1)
+                        setattr(sys.modules[parent_name], child_name, module)
+                    sys.modules[name] = module
+                    return module
+
+            return Loader()
+        
+        class MetaImporter(object):
+            def find_module(self, fullname, path=None):
+                if fullname == 'numpy' or fullname.startswith('numpy.'):
+                    _mapper.PerpetrateNumpyFixes()
+                if fullname in ('_hashlib', 'ctypes'):
+                    raise ImportError('%s is not available in ironclad yet' % fullname)
+        
+                lastname = fullname.rsplit('.', 1)[-1]
+                for d in (path or sys.path):
+                    pyd = os.path.join(d, lastname + '.pyd')
+                    if os.path.exists(pyd):
+                        return loader(pyd)
+        
+                return None
+
+        sys.meta_path.insert(0, MetaImporter())
+        iter_importer_modules.register(MetaImporter, meta_iterate_modules)
+        
+    
