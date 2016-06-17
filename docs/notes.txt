@@ -1,0 +1,49 @@
+Python 2.7
+
+iter_modules (iter_importers) ->
+  calls iter_importer_modules for each importer in iter_importers
+
+iter_importers (meta_path, get_importer) ->
+  returns every importer in sys.meta_path + map(get_importer, sys.path)
+
+get_importer(path):
+
+    returns a filtered list of sys.path_hooks for importers that can
+    handle this path; if there is no match, returns ImpImporter(),
+    which supplies a module iterator (ImpImporter.iter_modules) that
+    relies on getmodulename.  
+    
+    * A path_hook is a function of (path -> Maybe importer)
+
+iter_modules(path, get_importer, prefix) ->
+  calls iter_importer_modules for each importer returned by path.map(get_importer)
+
+iter_importer_modules(importer) ->
+  returns list of (filename, ispkg) for each module understood by the importer
+  * The method called depends on the class of the importer
+  * The default is a generic call for "no specific importer"
+  * For FILES, iter_import_modules returns a list of files whose
+    extensions match those in imp.get_suffixes(), which is hard-
+    coded into the interpreter.
+  * MEANING: Unless your importer can handle heterogenous module
+    suffixes, SourceFiles.iter_importer_modules can only find
+    homogeonous modules.
+
+This relationship issue holds for Python 2.6 as well.
+
+Python 3.3
+
+    The same issue holds, although now most of the extensions have been
+    moved to importlib._bootstrap.
+
+It is the relationship between
+   importlib.machinery.FileFinder
+and
+    _iter_file_finder_modules
+
+That's killing us.
+   
+
+
+  
+    

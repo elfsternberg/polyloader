@@ -46,8 +46,31 @@ class PolyLoader(pkgutil.ImpLoader):
         sys.modules[fullname] = module
         return module
 
-                
-class PolyFinder(pkgutil.ImpImporter):
+
+# Problem to be solved: pkgutil.iter_modules depends upon
+# get_importer, which requires that we uses path_hooks, not meta_path.
+# This is acceptable (see: https://pymotw.com/2/sys/imports.html), but
+# then it depends upon the inspect get_modulename, which in turn is
+# dependent upon the __builtin__.imp.get_suffixes(), which excludes
+# anything other than the builtin-recognizes suffixes.  The
+# arrangement, as of Python 2.7, excludes heterogenous packages from
+# being locatable by pkgutil.iter_modules.
+#
+# iter_modules use of the simplegeneric protocol makes things even
+# harder, as the order in which finders are loaded is not available at
+# runtime.
+#
+# Possible solutions: We provide our own pkgutils, which in turn hacks
+# the iter_modules; or we provide our own finder and ensure it gets
+# found before the native one.
+
+We actually want to have multiple
+# SourceFileFinders, each of which either recognizes the file to be
+    
+class PolyFinder(object):
+    def __init__(self, path = None):
+        self.path = path
+    
     def find_on_path(self, fullname):
         fls = ["%s/__init__.%s", "%s.%s"]
         dirpath = "/".join(fullname.split("."))
