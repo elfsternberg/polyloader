@@ -7,28 +7,28 @@ critical to the functioning of other programming languages that use the
 Python AST and Python VM, languages such as Hy, Doge, and Mochi.  
 
 Problem Statement
-  -----------------
+-----------------
 
 The Python module loader system is hard-coded to prevent the discovery
 of heterogenous source code packages.  From Python 2.6 through the
-current (as of this writing) Python 3.5, the import mechanism allowed
-for the creation of file finders and importers that would transform
-Python's import syntax into a *path,* assert whether or not that path
-could be made to correspond to a *syntax object*, and then attempt to
-*load* that syntax object as a Python module.  Python *packages*,
-however, are assumed to be uniformly made up of Python syntax objects,
-be they **.py** source files, **.pyc/.pyo** bytecode, or **.so/.dll**
-files with an exposed Python-to-C API.  In Python 2 these suffixes are
-hard-coded into the source in the **imp** builtin module; in Python 3
-these suffixes are constants defined in a private section of
-**importlib**; in either case, they are unavailable for modification.
-This lack of access to the extensions list prevents the *discovery* of
-heterogenous source code packages.
+current (as of this writing) Python 3.5, the import mechanism allows for
+the creation of file finders and importers that would transform Python's
+import syntax into a *path,* assert whether or not that path could be
+made to correspond to a *syntax object*, and then attempt to *load* that
+syntax object as a Python module.  Python *packages*, however, are
+assumed to be uniformly made up of Python syntax objects, be they
+**.py** source files, **.pyc/.pyo** bytecode, or **.so/.dll** files with
+an exposed Python-to-C API.  In Python 2 these suffixes are hard-coded
+into the source in the **imp** builtin module; in Python 3 these
+suffixes are constants defined in a private section of **importlib**; in
+either case, they are unavailable for modification.  This lack of access
+to the extensions list prevents the *discovery* of heterogenous source
+code packages.
 
-The discovery mechanism is outlined in Python's pkgutil module; features
-such as **pkgutil.iter_modules** do not work with heterogenous source
-code, which in turn means that one cannot write, for one important
-example, Django management commands in an alternative syntax.
+The discovery mechanism is outlined in Python's **pkgutil** module;
+features such as **pkgutil.iter_modules** do not work with heterogenous
+source code, which in turn means that one cannot write, for one
+important example, Django management commands in an alternative syntax.
 
 **polyloader** is a python module that intercepts calls to the default
 finder, loader, and package module iterator, and if the path resolves to

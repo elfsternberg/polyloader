@@ -64,34 +64,41 @@ class PolyLoader(pkgutil.ImpLoader):
 # the iter_modules; or we provide our own finder and ensure it gets
 # found before the native one.
 
-We actually want to have multiple
-# SourceFileFinders, each of which either recognizes the file to be
-    
+# Why the heck python 2.6 insists on calling finders "importers" is
+# beyond me.  At least in calls loaders "loaders".
+
 class PolyFinder(object):
     def __init__(self, path = None):
         self.path = path
     
-    def find_on_path(self, fullname):
+    def _pl_find_on_path(self, fullname, path=None):
+        subname = fullname.split(".")[-1]
+        if subname != fullname and self.path is None:
+            return None
+        # As in the original, we ignore the 'path' argument
+        path = None
+        if self.path is not None:
+            path = [os.path.realpath(self.path)]
+
         fls = ["%s/__init__.%s", "%s.%s"]
-        dirpath = "/".join(fullname.split("."))
-
-        for pth in sys.path:
-            pth = os.path.abspath(pth)
-            for fp in fls:
-                for (compiler, suffix) in PolyLoader._loader_handlers:
-                    composed_path = fp % ("%s/%s" % (pth, dirpath), suffix)
-                    if os.path.exists(composed_path):
-                        return composed_path
-
+        for fp in fls:
+            for (compiler, suffix) in PolyLoader._loader_handlers:
+                composed_path = fp % ("%s/%s" % (pth, dirpath), suffix)
+                if os.path.exists(composed_path):
+                    return PolyLoader(composed_path)
+        try:
+            file, filename, etc = imp.find_module(subname, path)
+        except ImportError:
+            return None
+        return ImpLoader(fullname, file, filename, etc)
+            
     def find_module(self, fullname, path=None):
-        path = self.find_on_path(fullname)
+        path = self._pl_find_on_path(fullname)
         if path:
             return PolyLoader(path)
-
+        return None
 
 def _install(compiler, suffixes):
-                              
-                
 
 sys.meta_path.insert(0, MetaImporter())
 iter_importer_modules.register(MetaImporter, meta_iterate_modules)
