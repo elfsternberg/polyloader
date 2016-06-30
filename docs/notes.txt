@@ -1,3 +1,106 @@
+Clarifying terminology
+
+The language used for describing the import mechanism is confusing,
+often horribly so.  Let's go with some clarification first.
+
+When the 'import <fullname>' command is called, a procedure is
+triggered.  That procedure then:
+
+* attempts to *find* a corresponding python *module*
+* attempts to *load* that corresponding module into *bytecode*
+* Associates the bytecode with the name via sys.modules[fullname]
+* Exposes the bytecode to the calling scope.
+
+Only the first three matter for our purposes.
+
+## FINDING
+
+*Finding* is the act of identifying the a resource that can be compiled
+into a meaningful Python module.  This resource could a file on a
+filesystem, a cell in a database, a remote web object, a stream of bytes
+in an object store, some content object in a compressed archive, or
+anything that can meaningfully be said described as an array of bytes.
+It could even be dynamically generated in some way.
+
+*Finding* typically involves scanning a collection of *resources*
+against a collection of *finders*.  *Finding* ends when "*finder __A__*,
+given *fullname __B__*, reports that a corresponding module can be found
+in *resource __C__*, and that the resource can be loaded with *loader
+__D__*."
+
+### METAFINDERS
+
+*Finders* come first, and *MetaFinders* come before all other kinds of
+finders.
+
+_Most finding is done in the context of `sys.path`_; that is, Python's
+primary means of organizing Python modules is to have them somewhere on
+the local filesystem.  Sometimes, however, you want to get in front of
+that scan.  That's what you do with a MetaFinder: A MetaFinder may have
+its own take on what to do with `sys.path`; it may choose to ignore
+`sys.path` entirely and do something with the import *fullname* that has
+nothing to do with the local filesystem.
+
+A Finder is any object with the following function:
+    [Loader|None] find_module([self|cls], fullname:string, path:[string|None])
+
+If find_module returns None if it cannot find a loader resource for
+fullname & path.
+
+MetaFinders are placed into the list `sys.meta_path` by whatever code
+needs a MetaFinder, and persist for the duration of the runtime provided
+they're not removed or replaced.  Being a list, the search is ordered
+and first one wins.  MetaFinders may be instantiated in any way the
+developer desires.
+
+### PATH_HOOK
+
+*PathHooks* are how `sys.path` is scanned to determine the
+which Finder should be associated with a given directory path.  
+
+A *PathHook* is a function:
+    [Finder|None] <anonymous function>(path:string)
+
+A *PathHook* is a function that takes a given directory path and, if the
+PathHook can identify a corresponding Finder for the modules in that
+directory path, returns the Finder, otherwise it returns None.
+
+If no `sys.meta_path` finder returns a loader, the full array of
+`sys.paths ⨯ sys.path_hooks` is compared until a path_hook says it can
+handle the path and the corresponding finder says it can handle the
+fullname.  If no match happens, Python's default import behavior is
+triggered.
+
+
+PathHooks are placed into the list `sys.path_hooks`; like
+`sys.meta_path`, the list is ordered and first one wins.
+
+### LOADER
+
+*Loaders* are returned by *Finders*, and are constructed by Finders with
+whatever resources the developer specifies the Finder has and can
+provide.  
+
+
+
+a collection of *finders* the *fullname* (the dot-separated string passed to the `import`
+function).
+
+
+
+to find a
+corresponding python module, which is then compiled into Python bytecode
+and incorporated into the python runtime, where it will be accessible to
+the importing function or modules
+
+MetaFinder: A python object with a single method:
+
+    (Loader|None) find_module(self, fullname:string, path:(string|None))
+
+
+
+
+
 Python 2.7
 
 iter_modules (iter_importers) ->

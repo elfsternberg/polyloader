@@ -1,104 +1,167 @@
+import io
 import os
 import os.path
+import stat
 import sys
+import imp
 import pkgutil
 
-class PolyLoader(pkgutil.ImpLoader):
 
+class PolyLoader():
     _loader_handlers = []
     _installed = False
 
-    def is_package(self, fullname):
-        dirpath = "/".join(fullname.split("."))
-        for pth in sys.path:
-            pth = os.path.abspath(pth)
-            for (compiler, suffix) in self._loader_handlers:
-                composed_path = "%s/%s/__init__.%s" % (pth, dirpath, suffix)
-                if os.path.exists(composed_path):
-                    return True
-        return False
+    def __init__(self, fullname, path, is_pkg):
+        self.fullname = fullname
+        self.path = path
+        self.is_package = is_pkg
 
+    @classmethod
+    def _install(cls, compiler, suffixes):
+        if isinstance(suffixes, basestring):
+            suffixes = [suffixes]
+        suffixes = set(suffixes)
+        overlap = suffixes.intersection(set([suf[0] for suf in imp.get_suffixes()]))
+        if overlap:
+            raise RuntimeError("Override of native Python extensions is not permitted.")
+        overlap = suffixes.intersection(
+            set([suffix for (compiler, suffix) in cls._loader_handlers]))
+        if overlap:
+            raise RuntimeWarning(
+                "Insertion of %s overrides already installed compiler." %
+                ', '.join(list(overlap)))
+        cls._loader_handlers += [(compiler, suf) for suf in suffixes]
 
     def load_module(self, fullname):
         if fullname in sys.modules:
             return sys.modules[fullname]
-        
+
+        if fullname != self.fullname:
+            raise ImportError("Load confusion: %s vs %s." % (fullname, self.fullname))
+
         matches = [(compiler, suffix) for (compiler, suffix) in self._loader_handlers
-                   if path.endswith(suffix)]
+                   if self.path.endswith(suffix)]
+
         if matches.length == 0:
-            raise ImportError("%s is not a recognized module?" % name)
+            raise ImportError("%s is not a recognized module?" % fullname)
 
         if matches.length > 1:
             raise ImportError("Multiple possible resolutions for %s: %s" % (
-                name, ', '.join([suffix for (compiler, suffix) in matches])))
+                fullname, ', '.join([suffix for (compiler, suffix) in matches])))
 
         compiler = matches[0]
-        module = compiler(name, path)
-        module.__file__ = self.filename
-        module.__name__ = self.fullname
+        with io.FileIO(self.path, 'r') as file:
+            source_text = file.read()
 
-        if self.is_package(fullname):
-            module.__path__ = self.path_entry
+        module = compiler(source_text, fullname, self.path)
+        module.__file__ = self.path
+        module.__name__ = self.fullname
+        module.__package__ = '.'.join(fullname.split('.')[:-1])
+
+        if self.is_package:
+            module.__path__ = [os.path.dirname(self.path)]
             module.__package__ = fullname
-        else:
-            module.__package__ = '.'.join(fullname.split('.')[:-1])
 
         sys.modules[fullname] = module
         return module
 
 
-# Problem to be solved: pkgutil.iter_modules depends upon
-# get_importer, which requires that we uses path_hooks, not meta_path.
-# This is acceptable (see: https://pymotw.com/2/sys/imports.html), but
-# then it depends upon the inspect get_modulename, which in turn is
-# dependent upon the __builtin__.imp.get_suffixes(), which excludes
-# anything other than the builtin-recognizes suffixes.  The
-# arrangement, as of Python 2.7, excludes heterogenous packages from
-# being locatable by pkgutil.iter_modules.
-#
-# iter_modules use of the simplegeneric protocol makes things even
-# harder, as the order in which finders are loaded is not available at
-# runtime.
-#
-# Possible solutions: We provide our own pkgutils, which in turn hacks
-# the iter_modules; or we provide our own finder and ensure it gets
-# found before the native one.
+# PolyFinder is an implementation of the Finder class from Python 2.7,
+# with embellishments gleefully copied from Python 3.4.  It supports
+# all the same functionality for non-.py sourcefiles with the added
+# benefit of falling back to Python's default behavior.
 
-# Why the heck python 2.6 insists on calling finders "importers" is
-# beyond me.  At least in calls loaders "loaders".
+# Polyfinder is instantiated by _polyloader_pathhook()
 
 class PolyFinder(object):
-    def __init__(self, path = None):
-        self.path = path
-    
+    def __init__(self, path=None):
+        self.path = path or '.'
+        
     def _pl_find_on_path(self, fullname, path=None):
-        subname = fullname.split(".")[-1]
-        if subname != fullname and self.path is None:
+        splitname = fullname.split(".")
+        if self.path is None and splitname[-1] != fullname:
             return None
-        # As in the original, we ignore the 'path' argument
-        path = None
-        if self.path is not None:
-            path = [os.path.realpath(self.path)]
+        
+        dirpath = "/".join(splitname)
+        path = [os.path.realpath(self.path)]
 
-        fls = ["%s/__init__.%s", "%s.%s"]
-        for fp in fls:
+        fls = [("%s/__init__.%s", True), ("%s.%s", False)]
+        for (fp, ispkg) in fls:
             for (compiler, suffix) in PolyLoader._loader_handlers:
-                composed_path = fp % ("%s/%s" % (pth, dirpath), suffix)
-                if os.path.exists(composed_path):
-                    return PolyLoader(composed_path)
+                composed_path = fp % ("%s/%s" % (path, dirpath), suffix)
+                if os.path.isfile(composed_path):
+                    return PolyLoader(fullname, composed_path, ispkg)
+
+        # Fall back onto Python's own methods.
         try:
-            file, filename, etc = imp.find_module(subname, path)
+            file, filename, etc = imp.find_module(fullname, path)
         except ImportError:
             return None
-        return ImpLoader(fullname, file, filename, etc)
-            
+        return pkgutil.ImpLoader(fullname, file, filename, etc)
+    
     def find_module(self, fullname, path=None):
-        path = self._pl_find_on_path(fullname)
-        if path:
-            return PolyLoader(path)
-        return None
+        return self._pl_find_on_path(fullname)
 
-def _install(compiler, suffixes):
+    @staticmethod
+    def getmodulename(path):
+        filename = os.path.basename(path)
+        suffixes = ([(-len(suf[0]), suf[0]) for suf in imp.get_suffixes()] +
+                    [(-len(suf[1]), suf[1]) for suf in PolyLoader.loader_handlers])
+        suffixes.sort()
+        for neglen, suffix in suffixes:
+            if filename[neglen:] == suffix:
+                return (filename[:neglen], suffix)
+    
+    def iter_modules(self, prefix=''):
+        if self.path is None or not os.path.isdir(self.path):
+            return
 
-sys.meta_path.insert(0, MetaImporter())
-iter_importer_modules.register(MetaImporter, meta_iterate_modules)
+        yielded = {}
+
+        try:
+            filenames = os.listdir(self.path)
+        except OSError:
+            # ignore unreadable directories like import does
+            filenames = []
+        filenames.sort()
+        for fn in filenames:
+            modname = self.getmodulename(fn)
+            if modname=='__init__' or modname in yielded:
+                continue
+
+            path = os.path.join(self.path, fn)
+            ispkg = False
+
+            if not modname and os.path.isdir(path) and '.' not in fn:
+                modname = fn
+                try:
+                    dircontents = os.listdir(path)
+                except OSError:
+                    # ignore unreadable directories like import does
+                    dircontents = []
+                for fn in dircontents:
+                    subname = self.getmodulename(fn)
+                    if subname=='__init__':
+                        ispkg = True
+                        break
+                else:
+                    continue    # not a package
+
+            if modname and '.' not in modname:
+                yielded[modname] = 1
+                yield prefix + modname, ispkg
+
+
+
+def _polyloader_pathhook(path):
+    if not os.path.isdir(path):
+        raise ImportError('Only directories are supported', path = path)
+    return PolyFinder(path)
+
+    
+def install(compiler, suffixes):
+    if not PolyLoader._installed:
+        sys.path_hooks.append(_polyloader_pathhook)
+        PolyLoader._installed = True
+    PolyLoader._install(compiler, suffixes)
+    

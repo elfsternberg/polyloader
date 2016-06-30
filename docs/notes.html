@@ -1,0 +1,51 @@
+<p>Python IMPORT</p>
+<p>What is the <em>exact</em> syntax of the python <code>import</code> command?</p>
+<p>Clarifying terminology</p>
+<p>The language used for describing the import mechanism is confusing, often horribly so. Let's go with some clarification first.</p>
+<p>When the 'import <fullname>' command is called, a procedure is triggered. That procedure then:</p>
+<ul>
+<li>attempts to <em>find</em> a corresponding python <em>module</em></li>
+<li>attempts to <em>load</em> that corresponding module into <em>bytecode</em></li>
+<li>Associates the bytecode with the name via sys.modules[fullname]</li>
+<li>Exposes the bytecode to the calling scope.</li>
+</ul>
+<p>Only the first three matter for our purposes.</p>
+<h2 id="finding">FINDING</h2>
+<p><em>Finding</em> is the act of identifying the a resource that can be compiled into a meaningful Python module. This resource could a file on a filesystem, a cell in a database, a remote web object, a stream of bytes in an object store, some content object in a compressed archive, or anything that can meaningfully be said described as an array of bytes. It could even be dynamically generated in some way.</p>
+<p><em>Finding</em> typically involves scanning a collection of <em>resources</em> against a collection of <em>finders</em>. <em>Finding</em> ends when &quot;<em>finder <strong>A</strong></em>, given <em>fullname <strong>B</strong></em>, reports that a corresponding module can be found in <em>resource <strong>C</strong></em>, and that the resource can be loaded with <em>loader <strong>D</strong></em>.&quot;</p>
+<h3 id="metafinders">METAFINDERS</h3>
+<p><em>Finders</em> come first, and <em>MetaFinders</em> come before all other kinds of finders.</p>
+<p><em>Most finding is done in the context of <code>sys.path</code></em>; that is, Python's primary means of organizing Python modules is to have them somewhere on the local filesystem. Sometimes, however, you want to get in front of that scan. That's what you do with a MetaFinder: A MetaFinder may have its own take on what to do with <code>sys.path</code>; it may choose to ignore <code>sys.path</code> entirely and do something with the import <em>fullname</em> that has nothing to do with the local filesystem.</p>
+<p>A Finder is any object with the following function: [Loader|None] find_module([self|cls], fullname:string, path:[string|None])</p>
+<p>If find_module returns None if it cannot find a loader resource for fullname &amp; path.</p>
+<p>MetaFinders are placed into the list <code>sys.meta_path</code> by whatever code needs a MetaFinder, and persist for the duration of the runtime provided they're not removed or replaced. Being a list, the search is ordered and first one wins. MetaFinders may be instantiated in any way the developer desires.</p>
+<h3 id="path_hook">PATH_HOOK</h3>
+<p><em>PathHooks</em> are how <code>sys.path</code> is scanned to determine the which Finder should be associated with a given directory path.</p>
+<p>A <em>PathHook</em> is a function: [Finder|None] <anonymous function>(path:string)</p>
+<p>A <em>PathHook</em> is a function that takes a given directory path and, if the PathHook can identify a corresponding Finder for the modules in that directory path, returns the Finder, otherwise it returns None.</p>
+<p>If no <code>sys.meta_path</code> finder returns a loader, the full array of <code>sys.paths ⨯ sys.path_hooks</code> is compared until a path_hook says it can handle the path and the corresponding finder says it can handle the fullname. If no match happens, Python's default import behavior is triggered.</p>
+<p>PathHooks are placed into the list <code>sys.path_hooks</code>; like <code>sys.meta_path</code>, the list is ordered and first one wins.</p>
+<h3 id="loader">LOADER</h3>
+<p><em>Loaders</em> are returned by <em>Finders</em>, and are constructed by Finders with whatever resources the developer specifies the Finder has and can provide.</p>
+<p>a collection of <em>finders</em> the <em>fullname</em> (the dot-separated string passed to the <code>import</code> function).</p>
+<p>to find a corresponding python module, which is then compiled into Python bytecode and incorporated into the python runtime, where it will be accessible to the importing function or modules</p>
+<p>MetaFinder: A python object with a single method:</p>
+<pre><code>(Loader|None) find_module(self, fullname:string, path:(string|None))</code></pre>
+<p>Python 2.7</p>
+<p>iter_modules (iter_importers) -&gt; calls iter_importer_modules for each importer in iter_importers</p>
+<p>iter_importers (meta_path, get_importer) -&gt; returns every importer in sys.meta_path + map(get_importer, sys.path)</p>
+<p>get_importer(path):</p>
+<pre><code>returns a filtered list of sys.path_hooks for importers that can
+handle this path; if there is no match, returns ImpImporter(),
+which supplies a module iterator (ImpImporter.iter_modules) that
+relies on getmodulename.  
+
+* A path_hook is a function of (path -&gt; Maybe importer)</code></pre>
+<p>iter_modules(path, get_importer, prefix) -&gt; calls iter_importer_modules for each importer returned by path.map(get_importer)</p>
+<p>iter_importer_modules(importer) -&gt; returns list of (filename, ispkg) for each module understood by the importer * The method called depends on the class of the importer * The default is a generic call for &quot;no specific importer&quot; * For FILES, iter_import_modules returns a list of files whose extensions match those in imp.get_suffixes(), which is hard- coded into the interpreter. * MEANING: Unless your importer can handle heterogenous module suffixes, SourceFiles.iter_importer_modules can only find homogeonous modules.</p>
+<p>This relationship issue holds for Python 2.6 as well.</p>
+<p>Python 3.3</p>
+<pre><code>The same issue holds, although now most of the extensions have been
+moved to importlib._bootstrap.</code></pre>
+<p>It is the relationship between importlib.machinery.FileFinder and <em>iter</em>file_finder_modules</p>
+<p>That's killing us.</p>

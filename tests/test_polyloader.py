@@ -17,9 +17,8 @@ from polyloader import polyloader
 # correct compiler has been found for a given extension.
 
 def compiler(pt):
-    def _compiler(source_path, modulename):
-        with open(source_path, "r") as file:
-            return compile("result='Success for %s: %s'" % (pt, file.readline().rstrip()), modulename, "exec")
+    def _compiler(source_text, modulename):
+        return compile("result='Success for %s: %s'" % (pt, source_text.rstrip()), modulename, "exec")
     return _compiler
 
 class Test_Polymorph_1(object):
