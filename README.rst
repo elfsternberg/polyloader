@@ -4,7 +4,8 @@ Synopsis
 **Polyloader** is a python module that enables the discovery and loading
 of heterogenous source code packages.  This discovery and loading is
 critical to the functioning of other programming languages that use the
-Python AST and Python VM, languages such as Hy, Doge, and Mochi.  
+Python AST and Python interpreter, languages such as Hy, Doge, and
+Mochi.
 
 Problem Statement
 -----------------
@@ -30,12 +31,13 @@ features such as **pkgutil.iter_modules** do not work with heterogenous
 source code, which in turn means that one cannot write, for one
 important example, Django management commands in an alternative syntax.
 
-**polyloader** is a python module that intercepts calls to the default
+**polyloader** is a Python module that intercepts calls to the default
 finder, loader, and package module iterator, and if the path resolves to
 an alternative syntax, provide the appropriate finder, loader and
 iterator.  **polyloader** is different from traditional importlib shims
-in that it directly affects the root loader, and thus allows for the
-discovery and importation of suffixes not listed in Python's defaults.
+in that it directly affects the default source file loader, and thus
+allows for the discovery and importation of suffixes not listed in
+Python's defaults.
 
 To use:
 -------
