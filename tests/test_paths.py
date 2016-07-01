@@ -38,6 +38,17 @@ def unload(name):
     except KeyError:
         pass
 
+def rmtree(path):
+    def _rmtree_inner(path):
+        for name in os.listdir(path):
+            fullname = os.path.join(path, name)
+            if os.path.isdir(fullname):
+                _waitfor(_rmtree_inner, fullname, waitall=True)
+                os.rmdir(fullname)
+            else:
+                os.unlink(fullname)
+    _rmtree_inner(path)
+    os.rmdir(path)
 
 class Test_Paths:
     path = TESTFN
@@ -53,9 +64,9 @@ class Test_Paths:
     # Regression test for http://bugs.python.org/issue1293.
     def test_trailing_slash(self):
         with open(os.path.join(self.path, 'test_trailing_slash.2'), 'w') as f:
-            f.write("testdata = 'test_trailing_slash'")
+            f.write("Test Trailing Slash\n")
         sys.path.append(self.path+'/')
         mod = __import__("test_trailing_slash")
-        self.assertEqual(mod.testdata, 'test_trailing_slash')
+        assert(mod.result == 'Success for 2: Test Trailing Slash')
         unload("test_trailing_slash")
 

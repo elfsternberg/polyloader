@@ -157,7 +157,7 @@ class PolyFinder(object):
 
 def _polyloader_pathhook(path):
     if not os.path.isdir(path):
-        raise ImportError('Only directories are supported', path=path)
+        raise ImportError('Only directories are supported: %s' % path)
     return PolyFinder(path)
 
 

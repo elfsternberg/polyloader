@@ -71,13 +71,8 @@ class Test_Imports(object):
                 print >> f, "a =", a
                 print >> f, "b =", b
 
-            if os.path.exists(source):
-                print "%s EXISTS..." % source
-
             try:
-                print "IMPORT..."
                 mod = __import__(TESTFN)
-                print "END IMPORT..."
             except ImportError, err:
                 print("import from %s (%s) failed: %s" % (ext, os.curdir, err))
                 assert(False)
@@ -91,7 +86,8 @@ class Test_Imports(object):
                 if not sys.dont_write_bytecode:
                     imp.reload(mod)
             except ImportError, err:
-                self.fail("import from .pyc/.pyo failed: %s" % err)
+                print("import from .pyc/.pyo failed: %s" % err)
+                assert(False)
             finally:
                 clean_tmpfiles(source)
                 unload(TESTFN)
