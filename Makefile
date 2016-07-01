@@ -75,11 +75,11 @@ servedocs: docs
 
 release: clean
 	python setup.py sdist upload
-	python setup.py bdist_wheel upload
+	python setup.py bdist upload
 
 dist: clean
 	python setup.py sdist
-	python setup.py bdist_wheel
+	python setup.py bdist
 	ls -l dist
 
 install: clean

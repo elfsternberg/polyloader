@@ -1,29 +1,3 @@
-# polyloader.py 
-#
-# Copyright (c) 2016 Elf M. Sternberg <elf.sternberg@gmail.com>
-# 
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-#
-
-""" Utilities for initializing extended path-hooks into the Python runtime """
-__all__ = []  # Exports nothing; this module is called for its side-effects
-
 import os
 import sys
 
@@ -31,11 +5,6 @@ from importlib import machinery
 from importlib.machinery import SOURCE_SUFFIXES as PY_SOURCE_SUFFIXES
 from pkgutil import iter_importer_modules
 import sys
-
-
-__author__ = 'Elf M. Sternberg'
-__version__ = '2016.05.29'
-__contact__ = 'elf.sternberg@gmail.com'
 
 
 if sys.version_info[0:2] in [(3,3), (3,4)]:
@@ -54,7 +23,7 @@ def _call_with_frames_removed(f, *args, **kwds):
     return f(*args, **kwds)
 
 
-class ExtendedSourceFileLoader(machinery.SourceFileLoader):
+class PolySourceFileLoader(machinery.SourceFileLoader):
     """Override the get_code method.  Falls back on the SourceFileLoader
        if it's a Python file, which will generate pyc files as needed,
        or works its way into the Extended version.  This method does
@@ -91,8 +60,14 @@ class ExtendedSourceFileLoader(machinery.SourceFileLoader):
 
         
 # Provide a working namespace for our new FileFinder.
-class ExtendedFileFinder(machinery.FileFinder):
+class PolySourceFileFinder(machinery.FileFinder):
 
+    
+
+
+    
+
+    
     # Taken from inspect.py and modified to support alternate suffixes.
     @staticmethod
     def getmodulename(path):
@@ -148,28 +123,27 @@ class ExtendedFileFinder(machinery.FileFinder):
                 yield prefix + modname, ispkg
         pass
 
-
-# Monkeypatch both path_hooks and iter_importer_modules to make our
-# modules recognizable to the module iterator functions.  This is
-# probably horribly fragile, but there doesn't seem to be a more
-# robust way of doing it at the moment, and these names are stable
-# from python 2.7 up.
+    
+        
 
 def install(compiler, suffixes):
-    """ Install a compiler and suffix(es) into Python's sys.path_hooks, so
-        that modules ending with thoses suffixes will be parsed into 
-        python executable modules automatically.  
+    """Install a specialized version of FileFinder that will search
+       through alternative extensions first for syntax files and, upon
+       encountering one, will return a specialized version of
+       SourceFileLoader for that syntax.  By replacing this into
+       path_hook this makes both import and iter_modules work as
+       expected.
     """
-
-    if sys.version[0] >= 3:
-        filefinder = [(f, i) for i, f in enumerate(sys.path_hooks)
-                      if repr(f).find('path_hook_for_FileFinder') != -1]
-        if not filefinder:
-            return
-        filefinder, fpos = filefinder[0]
     
-        ExtendedSourceFileLoader._source_handlers = (ExtendedSourceFileLoader._source_handlers +
-                                                     [(compiler, tuple(suffixes))])
+    
+    filefinder = [(f, i) for i, f in enumerate(sys.path_hooks)
+                  if repr(f).find('.path_hook_for_FileFinder') != -1]
+    if not filefinder:
+        return
+    filefinder, fpos = filefinder[0]
+    
+    
+    
     
         supported_loaders = _get_supported_file_loaders()
         print([repr(i) for i in supported_loaders])
@@ -186,52 +160,9 @@ def install(compiler, suffixes):
         if sys.path[0] != "":
             sys.path.insert(0, "")
 
-    if sys.version[0:2] == (2, 7):
-        def loader(path):
-            class Loader(object):
-                def __init__(self, path):
-                    self.path = path
-                    
-                def is_package(self, fullname):
-                    dirpath = "/".join(fullname.split("."))
-                    for pth in sys.path:
-                        pth = os.path.abspath(pth)
-                        composed_path = "%s/%s/__init__.%s" % (pth, dirpath, suffix)
-                        if os.path.exists(composed_path):
-                            return True
-                    return False
-
-                def load_module(self, name):
-                    if name in sys.modules:
-                        return sys.modules[name]
-
-                    module = compiler(fullname, path)
-                    module.__file__ = path
-                    sys.modules[name] = module
-                    if '.' in name:
-                        parent_name, child_name = name.rsplit('.', 1)
-                        setattr(sys.modules[parent_name], child_name, module)
-                    sys.modules[name] = module
-                    return module
-
-            return Loader()
         
-        class MetaImporter(object):
-            def find_module(self, fullname, path=None):
-                if fullname == 'numpy' or fullname.startswith('numpy.'):
-                    _mapper.PerpetrateNumpyFixes()
-                if fullname in ('_hashlib', 'ctypes'):
-                    raise ImportError('%s is not available in ironclad yet' % fullname)
-        
-                lastname = fullname.rsplit('.', 1)[-1]
-                for d in (path or sys.path):
-                    pyd = os.path.join(d, lastname + '.pyd')
-                    if os.path.exists(pyd):
-                        return loader(pyd)
-        
-                return None
 
-        sys.meta_path.insert(0, MetaImporter())
-        iter_importer_modules.register(MetaImporter, meta_iterate_modules)
+
         
-    
+def reset():
+    pass

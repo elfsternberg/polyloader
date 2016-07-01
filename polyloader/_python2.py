@@ -1,9 +1,9 @@
 import io
 import os
 import os.path
-import stat
 import sys
 import imp
+import types
 import pkgutil
 
 
@@ -25,11 +25,10 @@ class PolyLoader():
         if overlap:
             raise RuntimeError("Override of native Python extensions is not permitted.")
         overlap = suffixes.intersection(
-            set([suffix for (compiler, suffix) in cls._loader_handlers]))
+            set([suffix for (_, suffix) in cls._loader_handlers]))
         if overlap:
-            raise RuntimeWarning(
-                "Insertion of %s overrides already installed compiler." %
-                ', '.join(list(overlap)))
+            # Fail silently
+            return
         cls._loader_handlers += [(compiler, suf) for suf in suffixes]
 
     def load_module(self, fullname):
@@ -42,26 +41,29 @@ class PolyLoader():
         matches = [(compiler, suffix) for (compiler, suffix) in self._loader_handlers
                    if self.path.endswith(suffix)]
 
-        if matches.length == 0:
+        if len(matches) == 0:
             raise ImportError("%s is not a recognized module?" % fullname)
 
-        if matches.length > 1:
+        if len(matches) > 1:
             raise ImportError("Multiple possible resolutions for %s: %s" % (
                 fullname, ', '.join([suffix for (compiler, suffix) in matches])))
 
-        compiler = matches[0]
+        compiler = matches[0][0]
         with io.FileIO(self.path, 'r') as file:
             source_text = file.read()
 
-        module = compiler(source_text, fullname, self.path)
+        code = compiler(source_text, self.path, fullname)
+
+        module = types.ModuleType(fullname)
         module.__file__ = self.path
-        module.__name__ = self.fullname
+        module.__name__ = fullname
         module.__package__ = '.'.join(fullname.split('.')[:-1])
 
         if self.is_package:
-            module.__path__ = [os.path.dirname(self.path)]
+            module.__path__ = [os.path.dirname(module.__file__)]
             module.__package__ = fullname
 
+        exec(code, module.__dict__)
         sys.modules[fullname] = module
         return module
 
@@ -76,29 +78,29 @@ class PolyLoader():
 class PolyFinder(object):
     def __init__(self, path=None):
         self.path = path or '.'
-        
-    def _pl_find_on_path(self, fullname, path=None):
-        splitname = fullname.split(".")
-        if self.path is None and splitname[-1] != fullname:
-            return None
-        
-        dirpath = "/".join(splitname)
-        path = [os.path.realpath(self.path)]
 
+    def _pl_find_on_path(self, fullname, path=None):
+        subname = fullname.split(".")[-1]
+        if self.path is None and subname != fullname:
+            return None
+
+        path = os.path.realpath(self.path)
         fls = [("%s/__init__.%s", True), ("%s.%s", False)]
         for (fp, ispkg) in fls:
             for (compiler, suffix) in PolyLoader._loader_handlers:
-                composed_path = fp % ("%s/%s" % (path, dirpath), suffix)
+                composed_path = fp % ("%s/%s" % (path, subname), suffix)
+                if os.path.isdir(composed_path):
+                    raise IOError("Invalid: Directory name ends in recognized suffix")
                 if os.path.isfile(composed_path):
                     return PolyLoader(fullname, composed_path, ispkg)
 
         # Fall back onto Python's own methods.
         try:
-            file, filename, etc = imp.find_module(fullname, path)
-        except ImportError:
+            file, filename, etc = imp.find_module(subname, [path])
+        except ImportError as e:
             return None
         return pkgutil.ImpLoader(fullname, file, filename, etc)
-    
+
     def find_module(self, fullname, path=None):
         return self._pl_find_on_path(fullname)
 
@@ -106,12 +108,13 @@ class PolyFinder(object):
     def getmodulename(path):
         filename = os.path.basename(path)
         suffixes = ([(-len(suf[0]), suf[0]) for suf in imp.get_suffixes()] +
-                    [(-len(suf[1]), suf[1]) for suf in PolyLoader.loader_handlers])
+                    [(-len(suf[1]), suf[1]) for suf in PolyLoader._loader_handlers])
         suffixes.sort()
         for neglen, suffix in suffixes:
             if filename[neglen:] == suffix:
-                return (filename[:neglen], suffix)
-    
+                return filename[:neglen]
+        return None
+
     def iter_modules(self, prefix=''):
         if self.path is None or not os.path.isdir(self.path):
             return
@@ -126,7 +129,7 @@ class PolyFinder(object):
         filenames.sort()
         for fn in filenames:
             modname = self.getmodulename(fn)
-            if modname=='__init__' or modname in yielded:
+            if modname == '__init__' or modname in yielded:
                 continue
 
             path = os.path.join(self.path, fn)
@@ -141,7 +144,7 @@ class PolyFinder(object):
                     dircontents = []
                 for fn in dircontents:
                     subname = self.getmodulename(fn)
-                    if subname=='__init__':
+                    if subname == '__init__':
                         ispkg = True
                         break
                 else:
@@ -152,16 +155,19 @@ class PolyFinder(object):
                 yield prefix + modname, ispkg
 
 
-
 def _polyloader_pathhook(path):
     if not os.path.isdir(path):
-        raise ImportError('Only directories are supported', path = path)
+        raise ImportError('Only directories are supported', path=path)
     return PolyFinder(path)
 
-    
+
 def install(compiler, suffixes):
     if not PolyLoader._installed:
         sys.path_hooks.append(_polyloader_pathhook)
         PolyLoader._installed = True
     PolyLoader._install(compiler, suffixes)
-    
+
+
+def reset():
+    PolyLoader._loader_handlers = []
+    PolyLoader._installed = False
