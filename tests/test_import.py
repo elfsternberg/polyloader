@@ -55,6 +55,8 @@ class Test_Imports(object):
         else:
             assert(False)
 
+    @pytest.mark.skipif(hasattr(sys, 'pypy_version_info'),
+                        reason="PyPy won't load bytecode if source not present.")
     def test_import(self):
         sys.path.insert(0, os.curdir)
         ext = 'py'
@@ -139,6 +141,8 @@ class Test_Imports(object):
             assert(orig_path == new_os.path)
             assert(orig_getenv != new_os.getenv)
 
+    @pytest.mark.skipif(hasattr(sys, 'pypy_version_info'),
+                        reason="PyPy won't load bytecode if source not present.")
     def test_module_with_large_stack(self, module='longlist'):
         # Regression test for http://bugs.python.org/issue561858.
         filename = module + os.extsep + 'py'

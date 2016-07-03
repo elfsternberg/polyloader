@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
-
 
 with open('README.rst') as readme_file:
     readme = readme_file.read()
@@ -25,7 +23,7 @@ test_requirements = [
 setup(
     name='polyloader',
     version='0.1.0',
-    description="Importlib shim that enables mixed syntax in Python packages and executables.",
+    description="Importlib shim that enables heterogeneous syntax in Python packages.",
     long_description=readme + '\n\n' + history,
     author='Kenneth M. "Elf" Sternberg',
     author_email='elf.sternberg@gmail.com',
