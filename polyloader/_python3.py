@@ -192,14 +192,11 @@ class PolyFileFinder(FileFinder):
 
 
 def install(compiler, suffixes):
-    if not PolyFileFinder._installed:
+    filefinder = [(f, i) for i, f in enumerate(sys.path_hooks)
+                  if repr(f).find('.path_hook_for_FileFinder') != -1]
+    if filefinder:
         native_loaders = machinery._get_supported_file_loaders()
-        filefinder = [(f, i) for i, f in enumerate(sys.path_hooks)
-                      if repr(f).find('.path_hook_for_FileFinder') != -1]
-        if filefinder:
-            filefinder, fpos = filefinder[0]
-            sys.path_hooks[fpos] = PolyFileFinder.path_hook(*native_loaders)
-        else:
-            sys.path_hooks.extend([PolyFileFinder.path_hook(*native_loaders)
-        PolyFileFinder._installed = True
+        filefinder, fpos = filefinder[0]
+        sys.path_hooks[fpos] = PolyFileFinder.path_hook(*native_loaders)
+
     PolyFileFinder._install(compiler, suffixes)
