@@ -16,28 +16,10 @@ FLS = [('%s' + SEP + '__init__' + EXS + '%s', True),
 Loader = namedtuple('Loader', 'suffix compiler')
 
 class PolyLoader():
-    _loader_handlers = []
-    _installed = False
-
     def __init__(self, fullname, path, is_pkg):
         self.fullname = fullname
         self.path = path
         self.is_package = is_pkg
-
-    @classmethod
-    def _install(cls, compiler, suffixes):
-        if isinstance(suffixes, basestring):
-            suffixes = [suffixes]
-        suffixes = set(suffixes)
-        overlap = suffixes.intersection(set([suf[0] for suf in imp.get_suffixes()]))
-        if overlap:
-            raise RuntimeError("Override of native Python extensions is not permitted.")
-        overlap = suffixes.intersection(
-            set([loader.suffix for loader in cls._loader_handlers]))
-        if overlap:
-            # Fail silently
-            return
-        cls._loader_handlers += [Loader(suf, compiler) for suf in suffixes]
 
     def load_module(self, fullname):
         if fullname in sys.modules:
@@ -46,7 +28,7 @@ class PolyLoader():
         if fullname != self.fullname:
             raise ImportError("Load confusion: %s vs %s." % (fullname, self.fullname))
 
-        matches = [loader for loader in self._loader_handlers
+        matches = [loader for loader in PolyFinder._loader_handlers
                    if self.path.endswith(loader.suffix)]
 
         if len(matches) == 0:
@@ -84,6 +66,9 @@ class PolyLoader():
 # Polyfinder is instantiated by _polyloader_pathhook()
 
 class PolyFinder(object):
+    _loader_handlers = []
+    _installed = False
+
     def __init__(self, path=None):
         self.path = path or '.'
 
@@ -94,7 +79,7 @@ class PolyFinder(object):
 
         path = os.path.realpath(self.path)
         for (fp, ispkg) in FLS:
-            for loader in PolyLoader._loader_handlers:
+            for loader in self._loader_handlers:
                 composed_path = fp % (('%s' + SEP + '%s') % (path, subname), loader.suffix)
                 if os.path.isdir(composed_path):
                     raise IOError("Invalid: Directory name ends in recognized suffix")
@@ -111,11 +96,26 @@ class PolyFinder(object):
     def find_module(self, fullname, path=None):
         return self._pl_find_on_path(fullname)
 
-    @staticmethod
-    def getmodulename(path):
+    @classmethod
+    def _install(cls, compiler, suffixes):
+        if isinstance(suffixes, basestring):
+            suffixes = [suffixes]
+        suffixes = set(suffixes)
+        overlap = suffixes.intersection(set([suf[0] for suf in imp.get_suffixes()]))
+        if overlap:
+            raise RuntimeError("Override of native Python extensions is not permitted.")
+        overlap = suffixes.intersection(
+            set([loader.suffix for loader in cls._loader_handlers]))
+        if overlap:
+            # Fail silently
+            return
+        cls._loader_handlers += [Loader(suf, compiler) for suf in suffixes]
+
+    @classmethod
+    def getmodulename(cls, path):
         filename = os.path.basename(path)
         suffixes = ([(-len(suf[0]), suf[0]) for suf in imp.get_suffixes()] +
-                    [(-len(suf[0]), suf[0]) for suf in PolyLoader._loader_handlers])
+                    [(-len(suf[0]), suf[0]) for suf in cls._loader_handlers])
         suffixes.sort()
         for neglen, suffix in suffixes:
             if filename[neglen:] == suffix:
@@ -169,12 +169,12 @@ def _polyloader_pathhook(path):
 
 
 def install(compiler, suffixes):
-    if not PolyLoader._installed:
+    if not PolyFinder._installed:
         sys.path_hooks.append(_polyloader_pathhook)
-        PolyLoader._installed = True
-    PolyLoader._install(compiler, suffixes)
+        PolyFinder._installed = True
+    PolyFinder._install(compiler, suffixes)
 
 
 def reset():
-    PolyLoader._loader_handlers = []
-    PolyLoader._installed = False
+    PolyFinder._loader_handlers = []
+    PolyFinder._installed = False
