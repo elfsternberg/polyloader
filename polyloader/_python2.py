@@ -5,11 +5,15 @@ import sys
 import imp
 import types
 import pkgutil
+from collections import namedtuple
+
 
 SEP = os.sep
 EXS = os.extsep
 FLS = [('%s' + SEP + '__init__' + EXS + '%s', True), 
        ('%s' + EXS + '%s', False)]
+
+Loader = namedtuple('Loader', 'suffix compiler')
 
 class PolyLoader():
     _loader_handlers = []
@@ -29,11 +33,11 @@ class PolyLoader():
         if overlap:
             raise RuntimeError("Override of native Python extensions is not permitted.")
         overlap = suffixes.intersection(
-            set([suffix for (_, suffix) in cls._loader_handlers]))
+            set([loader.suffix for loader in cls._loader_handlers]))
         if overlap:
             # Fail silently
             return
-        cls._loader_handlers += [(compiler, suf) for suf in suffixes]
+        cls._loader_handlers += [Loader(suf, compiler) for suf in suffixes]
 
     def load_module(self, fullname):
         if fullname in sys.modules:
@@ -42,17 +46,17 @@ class PolyLoader():
         if fullname != self.fullname:
             raise ImportError("Load confusion: %s vs %s." % (fullname, self.fullname))
 
-        matches = [(compiler, suffix) for (compiler, suffix) in self._loader_handlers
-                   if self.path.endswith(suffix)]
+        matches = [loader for loader in self._loader_handlers
+                   if self.path.endswith(loader.suffix)]
 
         if len(matches) == 0:
             raise ImportError("%s is not a recognized module?" % fullname)
 
         if len(matches) > 1:
             raise ImportError("Multiple possible resolutions for %s: %s" % (
-                fullname, ', '.join([suffix for (compiler, suffix) in matches])))
+                fullname, ', '.join([loader.suffix for loader in matches])))
 
-        compiler = matches[0][0]
+        compiler = matches[0].compiler
         with io.FileIO(self.path, 'r') as file:
             source_text = file.read()
 
@@ -90,8 +94,8 @@ class PolyFinder(object):
 
         path = os.path.realpath(self.path)
         for (fp, ispkg) in FLS:
-            for (compiler, suffix) in PolyLoader._loader_handlers:
-                composed_path = fp % (('%s' + SEP + '%s') % (path, subname), suffix)
+            for loader in PolyLoader._loader_handlers:
+                composed_path = fp % (('%s' + SEP + '%s') % (path, subname), loader.suffix)
                 if os.path.isdir(composed_path):
                     raise IOError("Invalid: Directory name ends in recognized suffix")
                 if os.path.isfile(composed_path):
@@ -111,7 +115,7 @@ class PolyFinder(object):
     def getmodulename(path):
         filename = os.path.basename(path)
         suffixes = ([(-len(suf[0]), suf[0]) for suf in imp.get_suffixes()] +
-                    [(-len(suf[1]), suf[1]) for suf in PolyLoader._loader_handlers])
+                    [(-len(suf[0]), suf[0]) for suf in PolyLoader._loader_handlers])
         suffixes.sort()
         for neglen, suffix in suffixes:
             if filename[neglen:] == suffix:
