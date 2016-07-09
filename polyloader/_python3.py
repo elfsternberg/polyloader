@@ -160,9 +160,46 @@ def install(compiler, suffixes):
         if sys.path[0] != "":
             sys.path.insert(0, "")
 
-        
 
 
+class PolySourceFileLoader(FileLoader):
+    
         
-def reset():
-    pass
+
+class PolyFileFinder(FileFinder):
+    '''The poly version of FileFinder supports the addition of loaders
+       after initialization.  That's pretty much the whole point of the 
+       PolyLoader mechanism.'''
+
+    _loaders = []
+    _installed = False
+    
+    def __init__(self, path, *loader_details = []):
+        self._loaders = [(suffix, loader) 
+                         for (loader, suffixes) in loader_details
+                         for suffix in suffixes]
+
+        for loader, suffixes in loader_details:
+            loaders.extend((suffix, loader) for suffix in suffixes)
+        self._loaders = loaders
+        # Base (directory) path
+        self.path = path or '.'
+        self._path_mtime = -1
+        self._path_cache = set()
+        self._relaxed_path_cache = set()
+
+
+
+
+def install(compiler, suffixes):
+    if not PolyFileFinder._installed:
+        native_loaders = machinery._get_supported_file_loaders()
+        filefinder = [(f, i) for i, f in enumerate(sys.path_hooks)
+                      if repr(f).find('.path_hook_for_FileFinder') != -1]
+        if filefinder:
+            filefinder, fpos = filefinder[0]
+            sys.path_hooks[fpos] = PolyFileFinder.path_hook(*native_loaders)
+        else:
+            sys.path_hooks.extend([PolyFileFinder.path_hook(*native_loaders)
+        PolyFileFinder._installed = True
+    PolyFileFinder._install(compiler, suffixes)
