@@ -6,6 +6,10 @@ import imp
 import types
 import pkgutil
 
+SEP = os.sep
+EXS = os.extsep
+FLS = [('%s' + SEP + '__init__' + EXS + '%s', True), 
+       ('%s' + EXS + '%s', False)]
 
 class PolyLoader():
     _loader_handlers = []
@@ -85,10 +89,9 @@ class PolyFinder(object):
             return None
 
         path = os.path.realpath(self.path)
-        fls = [("%s/__init__.%s", True), ("%s.%s", False)]
-        for (fp, ispkg) in fls:
+        for (fp, ispkg) in FLS:
             for (compiler, suffix) in PolyLoader._loader_handlers:
-                composed_path = fp % ("%s/%s" % (path, subname), suffix)
+                composed_path = fp % (('%s' + SEP + '%s') % (path, subname), suffix)
                 if os.path.isdir(composed_path):
                     raise IOError("Invalid: Directory name ends in recognized suffix")
                 if os.path.isfile(composed_path):
