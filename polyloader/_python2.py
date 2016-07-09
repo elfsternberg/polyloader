@@ -115,7 +115,7 @@ class PolyFinder(object):
     def getmodulename(cls, path):
         filename = os.path.basename(path)
         suffixes = ([(-len(suf[0]), suf[0]) for suf in imp.get_suffixes()] +
-                    [(-len(suf[0]), suf[0]) for suf in cls._loader_handlers])
+                    [(-(len(suf[0]) + 1), EXS + suf[0]) for suf in cls._loader_handlers])
         suffixes.sort()
         for neglen, suffix in suffixes:
             if filename[neglen:] == suffix:

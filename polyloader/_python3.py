@@ -1,169 +1,81 @@
 import os
 import sys
+import marshal
+import _imp
 
-from importlib import machinery
-from importlib.machinery import SOURCE_SUFFIXES as PY_SOURCE_SUFFIXES
-from pkgutil import iter_importer_modules
-import sys
+from importlib._bootstrap import (cache_from_source, SourceFileLoader,
+                                  FileFinder, _verbose_message, 
+                                  _get_supported_file_loaders, _relax_case)
 
-
-if sys.version_info[0:2] in [(3,3), (3,4)]:
-    from importlib._bootstrap import _get_supported_file_loaders
-    sourcefile_recognizer = 'importlib.SourceFileLoader'
-
-if sys.version_info[0:2] in [(3,5)]:
-    from importlib._bootstrap_external import _get_supported_file_loaders
-    sourcefile_recognizer = 'importlib_external.SourceFileLoader'
+SEP = os.sep
+EXS = os.extsep
+FLS = [('%s' + SEP + '__init__' + EXS + '%s', True), 
+       ('%s' + EXS + '%s', False)]
 
 
-def _call_with_frames_removed(f, *args, **kwds):
-    # Hack.  This function name and signature is hard-coded into
-    # Python's import.c.  The name and signature trigger importlib to
-    # remove itself from any stacktraces.  See import.c for details.
-    return f(*args, **kwds)
+def _suffixer(loaders):
+    return [(suffix, loader) 
+            for (loader, suffixes) in loaders
+            for suffix in suffixes]
 
 
-class PolySourceFileLoader(machinery.SourceFileLoader):
-    """Override the get_code method.  Falls back on the SourceFileLoader
-       if it's a Python file, which will generate pyc files as needed,
-       or works its way into the Extended version.  This method does
-       not yet address the generation of .pyc/.pyo files from source
-       files for languages other than Python.
-    """
+class _PolySourceFileLoader(SourceFileLoader):
+    _compiler = None
 
-    _source_handlers = []
-
-    @classmethod
-    def get_extended_suffixes(cls):
-        suffixes = [] 
-        for compiler, csuffx in cls._source_handlers:
-            suffixes = suffixes + list(csuffx)
-        return suffixes
-
-    @classmethod
-    def get_extended_suffixes_inclusive(cls):
-        return PY_SOURCE_SUFFIXES + cls.get_extended_suffixes()
-
-    # TODO: Address the generation of .pyc/.pyo files from source files.
-    # See importlib/_bootstrap.py for details in SourceFileLoader of
-    # how that's done.
+    # All this just to change one line.
     def get_code(self, fullname):
         source_path = self.get_filename(fullname)
-        if source_path.endswith(tuple(PY_SOURCE_SUFFIXES)):
-            return super(ExtendedSourceFileLoader, self).get_code(fullname)
-
-        for compiler, suffixes in self._source_handlers:
-            if source_path.endswith(suffixes):
-                return _call_with_frames_removed(compiler, source_path, fullname)
-        else:
-            raise ImportError("Could not find compiler for %s (%s)" % (fullname, source_path))
-
-        
-# Provide a working namespace for our new FileFinder.
-class PolySourceFileFinder(machinery.FileFinder):
-
-    
-
-
-    
-
-    
-    # Taken from inspect.py and modified to support alternate suffixes.
-    @staticmethod
-    def getmodulename(path):
-        fname = os.path.basename(path)
-        suffixes = [(-len(suffix), suffix)
-                    for suffix in (machinery.all_suffixes() + 
-                                   ExtendedSourceFileLoader.get_extended_suffixes())]
-        suffixes.sort()  # try longest suffixes first, in case they overlap
-        for neglen, suffix in suffixes:
-            if fname.endswith(suffix):
-                return fname[:neglen]
-        return None
-
-    # Taken from pkgutil.py and modified to support alternate suffixes.
-    @staticmethod
-    def iter_modules(importer, prefix=''):
-        if importer.path is None or not os.path.isdir(importer.path):
-            return
-
-        yielded = {}
+        source_mtime = None
         try:
-            filenames = os.listdir(importer.path)
-        except OSError:
-            # ignore unreadable directories like import does
-            filenames = []
-        filenames.sort()  # handle packages before same-named modules
-
-        for fn in filenames:
-            modname = ExtendedFileFinder.getmodulename(fn)
-            if modname == '__init__' or modname in yielded:
-                continue
-
-            path = os.path.join(importer.path, fn)
-            ispkg = False
-
-            if not modname and os.path.isdir(path) and '.' not in fn:
-                modname = fn
+            bytecode_path = cache_from_source(source_path)
+        except NotImplementedError:
+            bytecode_path = None
+        else:
+            try:
+                st = self.path_stats(source_path)
+            except NotImplementedError:
+                pass
+            else:
+                source_mtime = int(st['mtime'])
                 try:
-                    dircontents = os.listdir(path)
-                except OSError:
-                    # ignore unreadable directories like import does
-                    dircontents = []
-                for fn in dircontents:
-                    subname = ExtendedFileFinder.getmodulename(fn)
-                    if subname == '__init__':
-                        ispkg = True
-                        break
+                    data = self.get_data(bytecode_path)
+                except IOError:
+                    pass
                 else:
-                    continue    # not a package
-
-            if modname and '.' not in modname:
-                yielded[modname] = 1
-                yield prefix + modname, ispkg
-        pass
-
-    
-        
-
-def install(compiler, suffixes):
-    """Install a specialized version of FileFinder that will search
-       through alternative extensions first for syntax files and, upon
-       encountering one, will return a specialized version of
-       SourceFileLoader for that syntax.  By replacing this into
-       path_hook this makes both import and iter_modules work as
-       expected.
-    """
-    
-    
-    filefinder = [(f, i) for i, f in enumerate(sys.path_hooks)
-                  if repr(f).find('.path_hook_for_FileFinder') != -1]
-    if not filefinder:
-        return
-    filefinder, fpos = filefinder[0]
-    
-    
-    
-    
-        supported_loaders = _get_supported_file_loaders()
-        print([repr(i) for i in supported_loaders])
-        sourceloader = [(l, i) for i, l in enumerate(supported_loaders)
-                        if repr(l[0]).find(sourcefile_recognizer) != -1]
-        if not sourceloader:
-            return
-    
-        sourceloader, spos = sourceloader[0]
-        supported_loaders[spos] = (ExtendedSourceFileLoader,
-                                   ExtendedSourceFileLoader.get_extended_suffixes_inclusive())
-        sys.path_hooks[fpos] = ExtendedFileFinder.path_hook(*supported_loaders)
-        iter_importer_modules.register(ExtendedFileFinder, ExtendedFileFinder.iter_modules)
-        if sys.path[0] != "":
-            sys.path.insert(0, "")
-
-
-
-class PolySourceFileLoader(FileLoader):
-    
+                    try:
+                        bytes_data = self._bytes_from_bytecode(fullname, data,
+                                                               bytecode_path,
+                                                               st)
+                    except (ImportError, EOFError):
+                        pass
+                    else:
+                        _verbose_message('{} matches {}', bytecode_path,
+                                        source_path)
+                        found = marshal.loads(bytes_data)
+                        if isinstance(found, _code_type):
+                            _imp._fix_co_filename(found, source_path)
+                            _verbose_message('code object from {}',
+                                            bytecode_path)
+                            return found
+                        else:
+                            msg = "Non-code object in {}"
+                            raise ImportError(msg.format(bytecode_path),
+                                              name=fullname, path=bytecode_path)
+        source_bytes = self.get_data(source_path)
+        code_object = self._compiler(source_bytes, source_path, fullname)
+        _verbose_message('code object from {}', source_path)
+        if (not sys.dont_write_bytecode and bytecode_path is not None and
+            source_mtime is not None):
+            data = bytearray(_MAGIC_BYTES)
+            data.extend(_w_long(source_mtime))
+            data.extend(_w_long(len(source_bytes)))
+            data.extend(marshal.dumps(code_object))
+            try:
+                self._cache_bytecode(source_path, bytecode_path, data)
+                _verbose_message('wrote {!r}', bytecode_path)
+            except NotImplementedError:
+                pass
+        return code_object
         
 
 class PolyFileFinder(FileFinder):
@@ -173,7 +85,6 @@ class PolyFileFinder(FileFinder):
 
     _native_loaders = []
     _custom_loaders = []
-    _installed = False
     
     def __init__(self, path):
         # Base (directory) path
@@ -184,21 +95,149 @@ class PolyFileFinder(FileFinder):
 
     @property
     def _loaders(self):
-        return cls._native_loaders + cls._custom_loaders
+        return list(self._native_loaders) + self._custom_loaders
         
     @classmethod
-    def path_hook(cls):
-        if not _path_isdir(path):
-            # By now, we've exhausted every loader except this one, so...
-            raise ImportError("only directories are supported", path=path)
-        return cls(path)
+    def _install(cls, compiler, suffixes):
+        if not suffixes:
+            return
+        if isinstance(suffixes, str):
+            suffixes = [suffixes]
+        suffixset = set(suffixes)
+        overlap = suffixset.intersection(set([suf[0] for suf in cls._native_loaders]))
+        if overlap:
+            raise RuntimeError("Override of native Python extensions is not permitted.")
+        overlap = suffixset.intersection(
+            set([loader[0] for loader in cls._custom_loaders]))
+        if overlap:
+            # Fail silently
+            return
+
+        newloaderclassname = (suffixes[0].lower().capitalize() + 
+                              str(_PolySourceFileLoader).rpartition('.')[2][1:])
+        newloader = type(newloaderclassname, (_PolySourceFileLoader,), 
+                         dict(_compiler = compiler))
+        cls._custom_loaders += [(suffix, newloader) for suffix in suffixset]
+
+    @classmethod
+    def getmodulename(cls, path):
+        filename = os.path.basename(path)
+        suffixes = ([(-len(suf[0]), suf[0]) for suf in cls._native_loaders] +
+                    [(-len(suf[0]), suf[0]) for suf in cls._custom_loaders])
+        suffixes.sort()
+        for neglen, suffix in suffixes:
+            if filename[neglen:] == suffix:
+                return filename[:neglen]
+        return None
+
+    def find_loader(self, fullname):
+        """Try to find a loader for the specified module, or the namespace
+        package portions. Returns (loader, list-of-portions)."""
+        is_namespace = False
+        tail_module = fullname.rpartition('.')[2]
+        try:
+            mtime = os.stat(self.path).st_mtime
+        except OSError:
+            mtime = -1
+        if mtime != self._path_mtime:
+            self._fill_cache()
+            self._path_mtime = mtime
+        # tail_module keeps the original casing, for __file__ and friends
+        if _relax_case():
+            cache = self._relaxed_path_cache
+            cache_module = tail_module.lower()
+        else:
+            cache = self._path_cache
+            cache_module = tail_module
+        # Check if the module is the name of a directory (and thus a package).
+        if cache_module in cache:
+            base_path = os.path.join(self.path, tail_module)
+            if os.path.isdir(base_path):
+                for suffix, loader in self._loaders:
+                    init_filename = '__init__' + suffix
+                    full_path = os.path.join(base_path, init_filename)
+                    if os.path.isfile(full_path):
+                        return (loader(fullname, full_path), [base_path])
+                else:
+                    # A namespace package, return the path if we don't also
+                    #  find a module in the next section.
+                    is_namespace = True
+        # Check for a file w/ a proper suffix exists.
+        for suffix, loader in self._loaders:
+            print("SL:", suffix, loader)
+            full_path = os.path.join(self.path, tail_module + suffix)
+            _verbose_message('trying {}'.format(full_path), verbosity=2)
+            if cache_module + suffix in cache:
+                if os.path.isfile(full_path):
+                    return (loader(fullname, full_path), [])
+        if is_namespace:
+            _verbose_message('possible namespace for {}'.format(base_path))
+            return (None, [base_path])
+        return (None, [])
+
+    # In python 3, this was moved OUT of FileFinder and put into
+    # pkgutils, which is probably correct.  I'm leaving it here, as I
+    # want to trigger the hit before cascading down the singledispatch
+    # array of iter_importer_modules.  That's a hack too far.
+    def iter_modules(self, prefix=''):
+        if self.path is None or not os.path.isdir(self.path):
+            return
+
+        yielded = {}
+
+        try:
+            filenames = os.listdir(self.path)
+        except OSError:
+            # ignore unreadable directories like import does
+            filenames = []
+        filenames.sort()
+        for fn in filenames:
+            modname = self.getmodulename(fn)
+            if modname == '__init__' or modname in yielded:
+                continue
+
+            path = os.path.join(self.path, fn)
+            ispkg = False
+
+            if not modname and os.path.isdir(path) and '.' not in fn:
+                modname = fn
+                try:
+                    dircontents = os.listdir(path)
+                except OSError:
+                    # ignore unreadable directories like import does
+                    dircontents = []
+                for fn in dircontents:
+                    subname = self.getmodulename(fn)
+                    if subname == '__init__':
+                        ispkg = True
+                        break
+                else:
+                    continue    # not a package
+
+            if modname and '.' not in modname:
+                yielded[modname] = 1
+                yield prefix + modname, ispkg
+
+    @classmethod
+    def path_hook(cls, *loader_details):
+        cls._native_loaders = loader_details
+        def path_hook_for_PolyFileFinder(path):
+            if not os.path.isdir(path):
+                raise ImportError("only directories are supported", path=path)
+            return PolyFileFinder(path)
+        return path_hook_for_PolyFileFinder
+
 
 def install(compiler, suffixes):
     filefinder = [(f, i) for i, f in enumerate(sys.path_hooks)
                   if repr(f).find('.path_hook_for_FileFinder') != -1]
     if filefinder:
-        native_loaders = machinery._get_supported_file_loaders()
         filefinder, fpos = filefinder[0]
-        sys.path_hooks[fpos] = PolyFileFinder.path_hook(*native_loaders)
+        sys.path_hooks[fpos] = PolyFileFinder.path_hook(*(_suffixer(_get_supported_file_loaders())))
+        sys.path_importer_cache = {}
 
     PolyFileFinder._install(compiler, suffixes)
+
+
+def reset():
+    PolyFileFinder._custom_loaders = []

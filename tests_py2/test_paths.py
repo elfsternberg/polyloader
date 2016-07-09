@@ -1,7 +1,7 @@
 import polyloader
 import pytest
 import py_compile
-import ptutils
+from . import ptutils
 import stat
 import sys
 import os

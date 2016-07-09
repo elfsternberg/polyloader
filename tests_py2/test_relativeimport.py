@@ -1,7 +1,7 @@
 import polyloader
 import pytest
 import py_compile
-import ptutils
+from . import ptutils
 import stat
 import sys
 import os
@@ -42,10 +42,10 @@ def unload(name):
 class Test_RelativeImports:
 
     def teardown_class(cls):
-        unload("tests.relimport")
+        unload("tests_py2.relimport")
 
     def setup_class(cls):
-        unload("tests.relimport")
+        unload("tests_py2.relimport")
 
     def test_relimport_star(self):
         # This will import * from .test_import.
@@ -54,41 +54,41 @@ class Test_RelativeImports:
 
     def test_issue3221(self):
         # Regression test for http://bugs.python.org/issue3221.
-        def check_absolute():
+        def check_absolute(ns):
             exec "from os import path" in ns
-        def check_relative():
+        def check_relative(ns):
             exec "from . import relimport" in ns
 
         # Check both OK with __package__ and __name__ correct
-        ns = dict(__package__='tests', __name__='test.notarealmodule')
-        check_absolute()
-        check_relative()
+        ns = dict(__package__='tests_py2', __name__='test.notarealmodule')
+        check_absolute(ns)
+        check_relative(ns)
 
         # Check both OK with only __name__ wrong
-        ns = dict(__package__='tests', __name__='notarealpkg.notarealmodule')
-        check_absolute()
-        check_relative()
+        ns = dict(__package__='tests_py2', __name__='notarealpkg.notarealmodule')
+        check_absolute(ns)
+        check_relative(ns)
 
         # Check relative fails with only __package__ wrong
         ns = dict(__package__='foo', __name__='test.notarealmodule')
         with pytest.warns(RuntimeWarning) as rw:
-            check_absolute()
+            check_absolute(ns)
         with pytest.raises(SystemError) as se:
-            check_relative()
+            check_relative(ns)
 
         # Check relative fails with __package__ and __name__ wrong
         ns = dict(__package__='foo', __name__='notarealpkg.notarealmodule')
         with pytest.warns(RuntimeWarning) as se:
-            check_absolute()
+            check_absolute(ns)
         with pytest.raises(SystemError) as se:
-            check_relative()
+            check_relative(ns)
 
         # Check both fail with package set to a non-string
         ns = dict(__package__=object())
         with pytest.raises(ValueError) as ve:
-            check_absolute()
+            check_absolute(ns)
         with pytest.raises(ValueError) as ve:
-            check_relative()
+            check_relative(ns)
 
     def test_absolute_import_without_future(self):
         # If explicit relative import syntax is used, then do not try

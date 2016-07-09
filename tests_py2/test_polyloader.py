@@ -80,21 +80,21 @@ class Test_Polymorph_Direct(object):
         with ImportEnvironment() as sys:
             polyloader.install(compiler("2"), ['2'])
             polyloader.install(compiler("3"), ['3'])
-            import tests.polytestmix.test2
-            import tests.polytestmix.test3
-            import tests.polytestmix.test1
-            assert(tests.polytestmix.test1.result == "Success for 1: Test One")
-            assert(tests.polytestmix.test2.result == "Success for 2: Test Two")
-            assert(tests.polytestmix.test3.result == "Success for 3: Test Three")
+            import tests_py2.polytestmix.test2
+            import tests_py2.polytestmix.test3
+            import tests_py2.polytestmix.test1
+            assert(tests_py2.polytestmix.test1.result == "Success for 1: Test One")
+            assert(tests_py2.polytestmix.test2.result == "Success for 2: Test Two")
+            assert(tests_py2.polytestmix.test3.result == "Success for 3: Test Three")
 
 class Test_Polymorph_Module(object):
     def test_import3(self):
         with ImportEnvironment() as sys:
             polyloader.install(compiler("3"), ['3'])
             polyloader.install(compiler("2"), ['2'])
-            from tests.polytestmix.test3 import result as result3
-            from tests.polytestmix.test2 import result as result2
-            from tests.polytestmix.test1 import result as result1
+            from tests_py2.polytestmix.test3 import result as result3
+            from tests_py2.polytestmix.test2 import result as result2
+            from tests_py2.polytestmix.test1 import result as result1
             assert(result1 == "Success for 1: Test One")
             assert(result2 == "Success for 2: Test Two")
             assert(result3 == "Success for 3: Test Three")
@@ -105,8 +105,8 @@ class Test_Polymorph_Iterator(object):
         with ImportEnvironment() as sys:
             import os
             import inspect
-            polyloader.install(compiler("2"), ['.2'])
-            polyloader.install(compiler("3"), ['.3'])
+            polyloader.install(compiler("2"), ['2'])
+            polyloader.install(compiler("3"), ['3'])
             import pkgutil
             target_dir = os.path.join(
                 os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))),

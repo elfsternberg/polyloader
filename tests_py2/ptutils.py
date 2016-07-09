@@ -1,7 +1,11 @@
-import UserDict
+try:
+    from UserDict import DictMixin
+except ImportError:
+    from collections import MutableMapping as DictMixin
+
 import os
 
-class EnvironmentVarGuard(UserDict.DictMixin):
+class EnvironmentVarGuard(DictMixin):
 
     """Class to help protect the environment variable properly.  Can be used as
     a context manager."""

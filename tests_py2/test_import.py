@@ -1,7 +1,7 @@
 import polyloader
 import pytest
 import py_compile
-import ptutils
+from . import ptutils
 import stat
 import sys
 import os
@@ -23,6 +23,13 @@ class Compiler:
 polyloader.install(Compiler("2"), ['2'])
 
 TESTFN = '@test'
+
+if sys.version_info[0:2] >= (2, 6):
+    VERSION = 2
+
+if sys.version_info[0] >= 3:
+    VERSION = 3
+
 
 def clean_tmpfiles(path):
     if os.path.exists(path):
@@ -66,16 +73,14 @@ class Test_Imports(object):
             pyc = TESTFN + os.extsep + "pyc"
 
             with open(source, "w") as f:
-                print >> f, ("# This tests Python's ability to import a", ext,
-                             "file.")
                 a = random.randrange(1000)
                 b = random.randrange(1000)
-                print >> f, "a =", a
-                print >> f, "b =", b
-
+                f.write("# This tests Python's ability to import a" + ext + "file.\n")
+                f.write("a =" + str(a) + "\n")
+                f.write("b =" + str(b) + "\n")
             try:
                 mod = __import__(TESTFN)
-            except ImportError, err:
+            except ImportError as err:
                 print("import from %s (%s) failed: %s" % (ext, os.curdir, err))
                 assert(False)
             else:
@@ -87,7 +92,7 @@ class Test_Imports(object):
             try:
                 if not sys.dont_write_bytecode:
                     imp.reload(mod)
-            except ImportError, err:
+            except ImportError as err:
                 print("import from .pyc/.pyo failed: %s" % err)
                 assert(False)
             finally:
@@ -99,7 +104,7 @@ class Test_Imports(object):
     def test_execute_bit_not_copied(self):
         # Issue 6070: under posix .pyc files got their execute bit set if
         # the .py file had the execute bit set, but they aren't executable.
-        oldmask = os.umask(022)
+        oldmask = os.umask(0o22)
         sys.path.insert(0, os.curdir)
         try:
             fname = TESTFN + os.extsep + "py"
@@ -141,39 +146,11 @@ class Test_Imports(object):
             assert(orig_path == new_os.path)
             assert(orig_getenv != new_os.getenv)
 
-    @pytest.mark.skipif(hasattr(sys, 'pypy_version_info'),
-                        reason="PyPy won't load bytecode if source not present.")
-    def test_module_with_large_stack(self, module='longlist'):
-        # Regression test for http://bugs.python.org/issue561858.
-        filename = module + os.extsep + 'py'
-
-        # Create a file with a list of 65000 elements.
-        with open(filename, 'w+') as f:
-            f.write('d = [\n')
-            for i in range(65000):
-                f.write('"",\n')
-            f.write(']')
-
-        # Compile & remove .py file, we only need .pyc (or .pyo).
-        with open(filename, 'r') as f:
-            py_compile.compile(filename)
-        os.remove(filename)
-
-        # Need to be able to load from current dir.
-        sys.path.append('')
-
-        # This used to crash.
-        exec 'import ' + module
-
-        # Cleanup.
-        del sys.path[-1]
-        clean_tmpfiles(filename)
-
 
     def test_failing_import_sticks(self):
         source = TESTFN + os.extsep + "py"
         with open(source, "w") as f:
-            print >> f, "a = 1 // 0"
+            f.write("a = 1 // 0\n")
 
         # New in 2.4, we shouldn't be able to import that no matter how often
         # we try.
