@@ -171,25 +171,27 @@ class PolyFileFinder(FileFinder):
        after initialization.  That's pretty much the whole point of the 
        PolyLoader mechanism.'''
 
-    _loaders = []
+    _native_loaders = []
+    _custom_loaders = []
     _installed = False
     
-    def __init__(self, path, *loader_details = []):
-        self._loaders = [(suffix, loader) 
-                         for (loader, suffixes) in loader_details
-                         for suffix in suffixes]
-
-        for loader, suffixes in loader_details:
-            loaders.extend((suffix, loader) for suffix in suffixes)
-        self._loaders = loaders
+    def __init__(self, path):
         # Base (directory) path
         self.path = path or '.'
         self._path_mtime = -1
         self._path_cache = set()
         self._relaxed_path_cache = set()
 
-
-
+    @property
+    def _loaders(self):
+        return cls._native_loaders + cls._custom_loaders
+        
+    @classmethod
+    def path_hook(cls):
+        if not _path_isdir(path):
+            # By now, we've exhausted every loader except this one, so...
+            raise ImportError("only directories are supported", path=path)
+        return cls(path)
 
 def install(compiler, suffixes):
     filefinder = [(f, i) for i, f in enumerate(sys.path_hooks)
