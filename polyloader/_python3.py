@@ -2,6 +2,7 @@ import os
 import sys
 import marshal
 import pkgutil
+import types
 import _imp
 
 if sys.version_info[0:2] in [(3, 3), (3, 4)]:
@@ -143,8 +144,12 @@ class PolyFileFinder(FileFinder):
 
         newloaderclassname = (suffixes[0].lower().capitalize() + 
                               str(_PolySourceFileLoader).rpartition('.')[2][1:])
-        newloader = type(newloaderclassname, (_PolySourceFileLoader,), 
-                         dict(_compiler = compiler))
+        if isinstance(compiler, types.FunctionType):
+            newloader = type(newloaderclassname, (_PolySourceFileLoader,), 
+                             dict(_compiler = staticmethod(compiler)))
+        else:
+            newloader = type(newloaderclassname, (_PolySourceFileLoader,), 
+                             dict(_compiler = compiler))
         cls._custom_loaders += [(EXS + suffix, newloader) for suffix in suffixset]
 
     @classmethod
@@ -208,7 +213,6 @@ class PolyFileFinder(FileFinder):
         def path_hook_for_PolyFileFinder(path):
             if not os.path.isdir(path):
                 raise ImportError("only directories are supported", path=path)
-            print("Returning PolyFileFinder")
             return PolyFileFinder(path)
         return path_hook_for_PolyFileFinder
 

@@ -43,7 +43,6 @@ class Compiler:
         self.pt = pt
 
     def __call__(self, source_text, filename, *extra):
-        print(type(source_text))
         return compile("result='Success for %s: %s'" %
                        (self.pt, source_text.decode('utf-8').rstrip()), filename, "exec")
 
