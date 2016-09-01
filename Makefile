@@ -63,12 +63,15 @@ coverage:
 	$(BROWSER) htmlcov/index.html
 
 docs:
-	rm -f docs/polyloader.rst
-	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ polyloader
-	$(MAKE) -C docs clean
-	$(MAKE) -C docs html
-	$(BROWSER) docs/_build/html/index.html
+	rm -f docs/src/polyloader.rst
+	rm -f docs/src/modules.rst
+	sphinx-apidoc -o docs/src polyloader
+	$(MAKE) -C docs/src clean
+	$(MAKE) -C docs/src html
+	mv docs/_static/* docs/
+	rm -fr docs/_static
+	perl -pi.bak -e 's/_static\///g' docs/*.html
+	rm docs/*.html.bak
 
 servedocs: docs
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
