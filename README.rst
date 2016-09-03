@@ -5,8 +5,8 @@ Synopsis
 statement to enable the discovery and loading of heterogenous source
 code packages.
 
-Say What?
----------
+Say What? In English this time
+-------------------------------
 
 The ``import`` statement is how the Python interpreter finds a module
 written in Python and loads it, turning it into variables, executable
