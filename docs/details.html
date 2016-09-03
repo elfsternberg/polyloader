@@ -1,0 +1,223 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Details on Import and Polyloader &mdash; polyloader 0.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="default.css" type="text/css" />
+    <link rel="stylesheet" href="pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="jquery.js"></script>
+    <script type="text/javascript" src="underscore.js"></script>
+    <script type="text/javascript" src="doctools.js"></script>
+    <link rel="top" title="polyloader 0.1.0 documentation" href="index.html" />
+    <link rel="next" title="&lt;no title&gt;" href="contributing.html" />
+    <link rel="prev" title="Usage" href="usage.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="contributing.html" title="&lt;no title&gt;"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="usage.html" title="Usage"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">polyloader 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="details-on-import-and-polyloader">
+<h1>Details on Import and Polyloader<a class="headerlink" href="#details-on-import-and-polyloader" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="welcome-to-the-python-import-eli5">
+<h2>Welcome to the Python Import ELI5!<a class="headerlink" href="#welcome-to-the-python-import-eli5" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="what-is-import">
+<h3>What is <cite>import</cite>?<a class="headerlink" href="#what-is-import" title="Permalink to this headline">¶</a></h3>
+<p><tt class="docutils literal"><span class="pre">import</span></tt> is a Python statement that finds a <em>module</em> that is accessible
+by the currently running process, loads it, and makes its contents
+available to the scope in which the statement was made.  A statement
+like</p>
+<p><tt class="docutils literal"><span class="pre">import</span> <span class="pre">django.db.models</span></tt></p>
+<p>is looking for a module named <tt class="docutils literal"><span class="pre">django.db.models</span></tt>. If the statement is
+successful, <tt class="docutils literal"><span class="pre">django.db.models</span></tt> will be a variable name in the scope,
+it will be a Python <em>object</em> (of <tt class="docutils literal"><span class="pre">class</span> <span class="pre">Module</span></tt>, but that&#8217;s not
+important), and it will have functions, class constructors, variables
+and constants.  These Python objects will be accessible through the dot
+operator.</p>
+<p>An alternative way of writing import statements is</p>
+<p><tt class="docutils literal"><span class="pre">from</span> <span class="pre">django.utils</span> <span class="pre">import</span> <span class="pre">encoding</span></tt></p>
+<p>And then the variable will just be <tt class="docutils literal"><span class="pre">encoding</span></tt>.  The <tt class="docutils literal"><span class="pre">encoding</span></tt>
+module has a function for handling unicode-to-web translation.
+Accessing it through the dot operator, it looks like this:</p>
+<p><tt class="docutils literal"><span class="pre">ready_str</span> <span class="pre">=</span> <span class="pre">encoding.smart_str(unready_str)</span></tt></p>
+<p>We call the parts of the import statement that describe the module the
+<em>import string</em>.</p>
+</div>
+<div class="section" id="sys-path-hooks-how-does-python-know-where-to-look">
+<h3><tt class="docutils literal"><span class="pre">sys.path_hooks</span></tt>: How does Python know where to look?<a class="headerlink" href="#sys-path-hooks-how-does-python-know-where-to-look" title="Permalink to this headline">¶</a></h3>
+<p>That&#8217;s what&#8217;s funny.  Python has two independent ways of making sense of
+of the import string.  The old system is based on the assumption that
+everything is a filesystem, with folders and filenames.  This is called
+the <tt class="docutils literal"><span class="pre">sys.path_hooks</span></tt> system.</p>
+<p>In the old system, the parts of the import string would be split up, and
+then a collection of directories would be scanned to see if the first
+name in the import string could be matched with a subdirectory.  If it
+could, that directory would be scanned until the last name on the import
+string.  If that name was a <em>filename</em>, it would be loaded as a module.
+If that name was a <em>directory</em> and that directory had a file named
+<tt class="docutils literal"><span class="pre">__init__.py</span></tt>, then that file would be loaded as the module.</p>
+<p>The <tt class="docutils literal"><span class="pre">sys.path_hooks</span></tt> array has a list of different methods for trying to
+scan a filesystem for the parts of the import string.  A <tt class="docutils literal"><span class="pre">path_hook</span></tt> is
+a function that takes a path to a directory; if it can handle the
+contents of the directory, it returns a <strong>Finder</strong>, an object whose job
+is to figure out how to load the module; if it can&#8217;t, it returns an
+ImportError exception.  The object that loads the module is called,
+naturally, a <strong>Loader</strong>.</p>
+<ul class="simple">
+<li>To read more about <strong>Finders</strong>, see <a class="reference internal" href="eli5.html#eli5-finders"><em>Finders</em></a></li>
+<li>To read more about <strong>Loaders</strong>, see <a class="reference internal" href="eli5.html#eli5-loaders"><em>Loaders</em></a></li>
+<li>To read more about <strong>Path Hooks</strong>, see <a class="reference internal" href="eli5.html#eli5-pathhooks"><em>Path Hooks</em></a></li>
+</ul>
+</div>
+<div class="section" id="sys-path-what-directories-are-searched">
+<h3><tt class="docutils literal"><span class="pre">sys.path</span></tt>: What directories are searched?<a class="headerlink" href="#sys-path-what-directories-are-searched" title="Permalink to this headline">¶</a></h3>
+<p>The list of directories is stored in an array, <tt class="docutils literal"><span class="pre">sys.path</span></tt>.  This path is
+initialized by Python when it starts up, but programs can modify it at
+run-time to point to extra directories if they want.</p>
+</div>
+<div class="section" id="sys-meta-path-what-is-the-new-system">
+<h3><tt class="docutils literal"><span class="pre">sys.meta_path</span></tt>: What is the new system?<a class="headerlink" href="#sys-meta-path-what-is-the-new-system" title="Permalink to this headline">¶</a></h3>
+<p>The new system is called <tt class="docutils literal"><span class="pre">sys.meta_path</span></tt>, and it&#8217;s an array of
+<strong>Finders</strong>, objects that have one method, <tt class="docutils literal"><span class="pre">find_module(fullname)</span></tt>.
+It&#8217;s an anything-goes API that gives developers the freedom to import
+modules from anywhere: databases, archives, remote web resources, even
+code written on-the-fly internally.  The new system can apply any
+meaning at all to the import string.</p>
+<p>In Python, the import string is offered to each object in
+<tt class="docutils literal"><span class="pre">sys.meta_path</span></tt> before being offered to each <tt class="docutils literal"><span class="pre">sys.path_hook</span></tt>.  The
+filesystem is typically the last finder tried.</p>
+<p>To read more about <strong>Meta Paths</strong>, see <a class="reference internal" href="eli5.html#eli5-metapaths"><em>Meta Paths</em></a></p>
+</div>
+<div class="section" id="is-it-different-between-python-2-and-python-3">
+<h3>Is it different between Python 2 and Python 3?<a class="headerlink" href="#is-it-different-between-python-2-and-python-3" title="Permalink to this headline">¶</a></h3>
+<p>Python 3 moves almost everything about this process into python&#8217;s
+library, leaving only a bare minimum of functionality inside the Python
+executable to load this library and run it.  When the Python developers
+did that, they added a lot of functionality to make it easier to write
+new import modules.  The old way still works, but there are now <em>Module
+Specifications</em>, which are metadata about a module, and the old
+<tt class="docutils literal"><span class="pre">path_hooks</span></tt> system is now just a <tt class="docutils literal"><span class="pre">meta_path</span></tt> handler added to the
+new system as the last resort.</p>
+<p>To read more about <strong>Module Specifications</strong>, see <a class="reference internal" href="eli5.html#eli5-specs"><em>Module Specifications</em></a></p>
+</div>
+<div class="section" id="does-the-old-system-still-matter">
+<h3>Does the old system still matter?<a class="headerlink" href="#does-the-old-system-still-matter" title="Permalink to this headline">¶</a></h3>
+<p>Yes, for one reason: <em>iteration</em>.  Iteration is the ability to take a
+path where you believe Python modules can be found, and list through
+them.  This facility is useful for large frameworks where a user wants
+to add new commands, or new objects, or new operations; Django uses this
+facility a lot!  The <tt class="docutils literal"><span class="pre">pkgutil</span></tt> library depends upon Finders being able
+to iterate their contents.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Details on Import and Polyloader</a><ul>
+<li><a class="reference internal" href="#welcome-to-the-python-import-eli5">Welcome to the Python Import ELI5!</a><ul>
+<li><a class="reference internal" href="#what-is-import">What is <cite>import</cite>?</a></li>
+<li><a class="reference internal" href="#sys-path-hooks-how-does-python-know-where-to-look"><tt class="docutils literal"><span class="pre">sys.path_hooks</span></tt>: How does Python know where to look?</a></li>
+<li><a class="reference internal" href="#sys-path-what-directories-are-searched"><tt class="docutils literal"><span class="pre">sys.path</span></tt>: What directories are searched?</a></li>
+<li><a class="reference internal" href="#sys-meta-path-what-is-the-new-system"><tt class="docutils literal"><span class="pre">sys.meta_path</span></tt>: What is the new system?</a></li>
+<li><a class="reference internal" href="#is-it-different-between-python-2-and-python-3">Is it different between Python 2 and Python 3?</a></li>
+<li><a class="reference internal" href="#does-the-old-system-still-matter">Does the old system still matter?</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="usage.html"
+                        title="previous chapter">Usage</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="contributing.html"
+                        title="next chapter">&lt;no title&gt;</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/details.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="contributing.html" title="&lt;no title&gt;"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="usage.html" title="Usage"
+             >previous</a> |</li>
+        <li><a href="index.html">polyloader 0.1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2016, Kenneth M. &#34;Elf&#34; Sternberg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

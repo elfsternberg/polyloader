@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>&lt;no title&gt; &mdash; polyloader 0.1.0 documentation</title>
+    <title>Synopsis &mdash; polyloader 0.1.0 documentation</title>
     
     <link rel="stylesheet" href="default.css" type="text/css" />
     <link rel="stylesheet" href="pygments.css" type="text/css" />
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="doctools.js"></script>
     <link rel="top" title="polyloader 0.1.0 documentation" href="index.html" />
     <link rel="next" title="Installation" href="installation.html" />
-    <link rel="prev" title="Welcome to py-polymorphic-loader’s documentation!" href="index.html" /> 
+    <link rel="prev" title="Welcome to polyloader" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -41,7 +41,7 @@
           <a href="installation.html" title="Installation"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to py-polymorphic-loader’s documentation!"
+          <a href="index.html" title="Welcome to polyloader"
              accesskey="P">previous</a> |</li>
         <li><a href="index.html">polyloader 0.1.0 documentation</a> &raquo;</li> 
       </ul>
@@ -52,16 +52,80 @@
         <div class="bodywrapper">
           <div class="body">
             
-  
+  <div class="section" id="synopsis">
+<h1>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h1>
+<p><strong>Polyloader</strong> is a python module that extends the Python <cite>import</cite>
+statement to enable the discovery and loading of heterogenous source
+code packages.</p>
+</div>
+<div class="section" id="say-what">
+<h1>Say What?<a class="headerlink" href="#say-what" title="Permalink to this headline">¶</a></h1>
+<p>The <tt class="docutils literal"><span class="pre">import</span></tt> statement is how the Python interpreter finds a module
+written in Python and loads it, turning it into variables, executable
+functions, constructable classes, and other Python objects, and then
+exposes those objects to the currently running program.</p>
+<p>The <tt class="docutils literal"><span class="pre">import</span></tt> statement has long been extensible so that things other
+than Python code could be imported, but this feature has always had two
+limitations:</p>
+<ol class="arabic simple">
+<li>It&#8217;s annoyingly hard to write an importer. (Believe me. Polyloader
+<em>is</em> one!)</li>
+<li>For filesystem-based modules (which is 99% of them) Python&#8217;s importer
+only understands one loader type per directory.  It&#8217;s not possible to
+store code or data written in something other than Python in the same
+directory with Python module code and load it via <tt class="docutils literal"><span class="pre">import</span></tt>.</li>
+</ol>
+<p>The former requires a certain degree of abstraction and thought.  For
+the latter, most people ignore the problem and load module configuration
+files written in JSON or YAML or whatever directly.  This is fine,
+except when you want to write in one of Python&#8217;s extended languages like
+Hy or Coconut in a framework like Django, Flask or Glitch.</p>
+<p><strong>Polyloader</strong> eliminates these limitations.</p>
+</div>
+<div class="section" id="what-s-the-real-problem">
+<h1>What&#8217;s the real problem?<a class="headerlink" href="#what-s-the-real-problem" title="Permalink to this headline">¶</a></h1>
+<p>The real problem is that Python&#8217;s traditional extensions, <tt class="docutils literal"><span class="pre">.py</span></tt>,
+<tt class="docutils literal"><span class="pre">.pyc/.pyo</span></tt>, and <tt class="docutils literal"><span class="pre">.so/.dll</span></tt> files, are hard-coded in Python.  In
+Python 2, they&#8217;re in the <tt class="docutils literal"><span class="pre">imp</span></tt> builtin; In Python 3, they&#8217;re defined
+in a private section of <cite>importlib</cite>.  Either way, they&#8217;re not accessible
+for modification and extension.</p>
+<p>This problem is made harder by the <tt class="docutils literal"><span class="pre">pkglib</span></tt> module, which is part of
+Python&#8217;s standard library.  This module uses <tt class="docutils literal"><span class="pre">inspect.getmoduleinfo</span></tt>,
+which again only recognizes the usual extensions.  Which means you can&#8217;t
+list multilingual modules either; this hampers the development of Django
+management commands in a syntax other than Python.</p>
+</div>
+<div class="section" id="what-the-solution">
+<h1>What the solution?<a class="headerlink" href="#what-the-solution" title="Permalink to this headline">¶</a></h1>
+<p>At its heart, the Python import system runs two different internal
+mechanisms to figure out what the <em>import string</em> (the dotted terms
+after the word &#8220;import&#8221;) &#8220;means.&#8221;  Each mechanism has one or more
+<em>finders</em>, and the first finder to report &#8220;I have a <em>loader</em> that knows
+what that import string means&#8221; wins.</p>
+<p>The very last finder is for the filesystem.  The solution is to get in
+front of that finder with one that can handle all the other syntax
+loaders <em>and</em> knows how to fall back on the last one for those files the
+last one handles.</p>
+<p>That&#8217;s what <tt class="docutils literal"><span class="pre">polyloader</span></tt> does.</p>
+</div>
+
 
           </div>
         </div>
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Synopsis</a></li>
+<li><a class="reference internal" href="#say-what">Say What?</a></li>
+<li><a class="reference internal" href="#what-s-the-real-problem">What&#8217;s the real problem?</a></li>
+<li><a class="reference internal" href="#what-the-solution">What the solution?</a></li>
+</ul>
+
   <h4>Previous topic</h4>
   <p class="topless"><a href="index.html"
-                        title="previous chapter">Welcome to py-polymorphic-loader&#8217;s documentation!</a></p>
+                        title="previous chapter">Welcome to polyloader</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="installation.html"
                         title="next chapter">Installation</a></p>
@@ -100,7 +164,7 @@
           <a href="installation.html" title="Installation"
              >next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to py-polymorphic-loader’s documentation!"
+          <a href="index.html" title="Welcome to polyloader"
              >previous</a> |</li>
         <li><a href="index.html">polyloader 0.1.0 documentation</a> &raquo;</li> 
       </ul>

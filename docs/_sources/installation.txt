@@ -8,11 +8,11 @@ Installation
 Stable release
 --------------
 
-To install py-polymorphic-loader, run this command in your terminal:
+To install polyloader, run this command in your terminal:
 
 .. code-block:: console
 
-    $ pip install py-polymorphic-loader
+    $ pip install polyloader
 
 If you don't have `pip`_ installed, this `Python installation guide`_ can guide
 you through the process.
@@ -24,19 +24,19 @@ you through the process.
 From sources
 ------------
 
-The sources for py-polymorphic-loader can be downloaded from the `Github repo`_.
+The sources for polyloader can be downloaded from the `Github repo`_.
 
 You can either clone the public repository:
 
 .. code-block:: console
 
-    $ git clone git://github.com/elfsternberg/py-polymorphic-loader
+    $ git clone git://github.com/elfsternberg/polyloader
 
 Or download the `tarball`_:
 
 .. code-block:: console
 
-    $ curl  -OL https://github.com/elfsternberg/py-polymorphic-loader/tarball/master
+    $ curl  -OL https://github.com/elfsternberg/polyloader/tarball/master
 
 Once you have a copy of the source, you can install it with:
 
@@ -45,5 +45,5 @@ Once you have a copy of the source, you can install it with:
     $ python setup.py install
 
 
-.. _Github repo: https://github.com/elfsternberg/py-polymorphic-loader
-.. _tarball: https://github.com/elfsternberg/py-polymorphic-loader/tarball/master
+.. _Github repo: https://github.com/elfsternberg/polyloader
+.. _tarball: https://github.com/elfsternberg/polyloader/tarball/master
