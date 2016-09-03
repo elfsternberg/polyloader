@@ -108,4 +108,5 @@ path where you believe Python modules can be found, and list through
 them.  This facility is useful for large frameworks where a user wants
 to add new commands, or new objects, or new operations; Django uses this
 facility a lot!  The ``pkgutil`` library depends upon Finders being able
-to iterate their contents.
+to iterate their contents, and with the filesystem iterator, that means
+being able to tell there's more than one kind of syntax in a directory.

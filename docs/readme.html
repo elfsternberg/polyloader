@@ -73,7 +73,7 @@ limitations:</p>
 <li>For filesystem-based modules (which is 99% of them) Python&#8217;s importer
 only understands one loader type per directory.  It&#8217;s not possible to
 store code or data written in something other than Python in the same
-directory with Python module code and load it via <tt class="docutils literal"><span class="pre">import</span></tt>.</li>
+directory with Python module code and load both via <tt class="docutils literal"><span class="pre">import</span></tt>.</li>
 </ol>
 <p>The former requires a certain degree of abstraction and thought.  For
 the latter, most people ignore the problem and load module configuration
@@ -86,7 +86,7 @@ Hy or Coconut in a framework like Django, Flask or Glitch.</p>
 <h1>What&#8217;s the real problem?<a class="headerlink" href="#what-s-the-real-problem" title="Permalink to this headline">¶</a></h1>
 <p>The real problem is that Python&#8217;s traditional extensions, <tt class="docutils literal"><span class="pre">.py</span></tt>,
 <tt class="docutils literal"><span class="pre">.pyc/.pyo</span></tt>, and <tt class="docutils literal"><span class="pre">.so/.dll</span></tt> files, are hard-coded in Python.  In
-Python 2, they&#8217;re in the <tt class="docutils literal"><span class="pre">imp</span></tt> builtin; In Python 3, they&#8217;re defined
+Python 2, they&#8217;re in the <tt class="docutils literal"><span class="pre">_imp</span></tt> builtin; In Python 3, they&#8217;re defined
 in a private section of <cite>importlib</cite>.  Either way, they&#8217;re not accessible
 for modification and extension.</p>
 <p>This problem is made harder by the <tt class="docutils literal"><span class="pre">pkglib</span></tt> module, which is part of

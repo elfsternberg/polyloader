@@ -22,7 +22,7 @@ limitations:
 2. For filesystem-based modules (which is 99% of them) Python's importer
    only understands one loader type per directory.  It's not possible to
    store code or data written in something other than Python in the same
-   directory with Python module code and load it via ``import``.
+   directory with Python module code and load both via ``import``.
 
 The former requires a certain degree of abstraction and thought.  For
 the latter, most people ignore the problem and load module configuration
@@ -37,7 +37,7 @@ What's the real problem?
 
 The real problem is that Python's traditional extensions, ``.py``,
 ``.pyc/.pyo``, and ``.so/.dll`` files, are hard-coded in Python.  In
-Python 2, they're in the ``imp`` builtin; In Python 3, they're defined
+Python 2, they're in the ``_imp`` builtin; In Python 3, they're defined
 in a private section of `importlib`.  Either way, they're not accessible
 for modification and extension.
 
